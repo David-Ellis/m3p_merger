@@ -100,7 +100,7 @@ def MakePeakList(ppFile, printOutput = False):
             print("Loading file:", fname)
         f = HaloReader(fname)
         
-        All_Peaks[redshift_index] = np.vstack((f.x, f.y, f.z, f.radius))
+        All_Peaks[redshift_index] = np.vstack((f.x, f.y, f.z, f.radius, f.mass))
     return All_Peaks, boxsize
 
 
@@ -182,6 +182,44 @@ def FindAllSubHalos(ppInputsFile, printOutput = False):
       
     return final_peaks
 
+# def BuildMergerTree(peak_list, pp_file, final_halo_index, redshift_indicies='all'):
+#     p = ParamsFile(pp_file)
+#     boxsize = p["boxsize"]  
+    
+#     # if no redshifts chosen, use all of them
+#     if redshift_indicies=='all':
+#         redshift_indicies = np.arange(len(p["redshifts"]))
+    
+#     # build KD trees
+#     trees = [cKDTree(peak_list[i][0:3].T, boxsize = boxsize) for i in range(len(redshift_indicies))]
+    
+#     peaks = np.zeros(len(redshift_indicies), dtype=object)
+    
+#     peaks[0] = np.vstack(np.asarray(peak_list[0][:, final_halo_index])).T
+    
+#     final_radius = peak_list[0][3,final_halo_index]
+#     total_peaks = 0
+#     for redshift_index in redshift_indicies[:-1]:
+        
+#         # Check peaks at next (earlier) redshift to see if any are contained within the final radius
+#         query = trees[redshift_index+1].query(peak_list[0][0:3, final_halo_index], k=200, eps=0)
+        
+#         dists = query[0]
+#         if len(dists[dists<final_radius]) == 100:
+#             print("Error: Reached peak count limit")
+#         #total_peaks += len(dists)
+#         #print(total_peaks)
+#         new_peaks = np.zeros(len(query[1][dists<final_radius]), dtype = object)
+#         for i, index in enumerate(query[1][dists<final_radius]):
+#             new_peaks[i] = peak_list[redshift_index+1][:, index]
+#         #print(len(new_peaks))
+#         if len(new_peaks) == 1:
+#             peaks[redshift_index+1] = np.vstack(np.asarray(new_peaks))
+#         elif new_peaks.size>0:
+#             peaks[redshift_index+1] = np.vstack(np.asarray(new_peaks))
+#         else:
+#             peaks[redshift_index+1] = np.asarray([])
+#     return peaks
 
 def BuildMergerTree(peak_list, pp_file, final_halo_index, redshift_indicies='all'):
     p = ParamsFile(pp_file)
@@ -200,24 +238,24 @@ def BuildMergerTree(peak_list, pp_file, final_halo_index, redshift_indicies='all
     
     # Find all other sub-peaks 
     for redshift_index in redshift_indicies[:-1]:
-        print("Redshift index: {}".format(redshift_index))
+        #print("Redshift index: {}".format(redshift_index))
         # Check peaks at next (earlier) redshift to see if any are contained within the final radius
 
         new_peaks = []
-        for parent_index in range(len(peaks[redshift_index][:,0])):
-            query = trees[redshift_index+1].query(peaks[redshift_index][parent_index, 0:3], k=100, eps=0)
-            #print(parent_index)
-            dists = query[0]
-            radius = peaks[redshift_index][parent_index, 3]
-            #print(radius, ":", dists[0:3])
-            if len(dists[dists<radius]) == 100:
-                print("Error: Reached peak count limit")
-                
-            for i, index in enumerate(query[1][dists<radius]):
-                #print(peak_list[redshift_index+1][:, index])
-                new_peaks.append(peak_list[redshift_index+1][:, index])  
+        if peaks[redshift_index].size>0:
+            for parent_index in range(len(peaks[redshift_index][:,0])):
+                query = trees[redshift_index+1].query(peaks[redshift_index][parent_index, 0:3], k=200, eps=0)
+                #print(parent_index)
+                dists = query[0]
+                radius = peaks[redshift_index][parent_index, 3]
+                #print(radius, ":", dists[0:3])
+                if len(dists[dists<radius]) == 100:
+                    print("Error: Reached peak count limit")
+
+                for i, index in enumerate(query[1][dists<radius]):
+                    #print(peak_list[redshift_index+1][:, index])
+                    new_peaks.append(peak_list[redshift_index+1][:, index])  
         new_peaks = np.asarray(new_peaks)
-        print(len(new_peaks))
         if len(new_peaks) == 1:
             peaks[redshift_index+1] = np.vstack(np.asarray(new_peaks))
         elif new_peaks.size>0:
@@ -227,14 +265,18 @@ def BuildMergerTree(peak_list, pp_file, final_halo_index, redshift_indicies='all
     return peaks
 
 def MoveOutOfBounds(merger_list, boxsize, printOutput=False):
+    if printOutput == True:
+        print("Moving out of bounds...")
+
     for j, peaks in enumerate(merger_list[1:]):
         if printOutput == True:
             print("redshift index: {}".format(j+1))
-        diffs = peaks[:, 0:3]-merger_list[0][0][0:3]
-        merger_list[j+1][:,0:3][diffs>boxsize/2] -= boxsize
-        merger_list[j+1][:,0:3][diffs<-boxsize/2] += boxsize
-        if printOutput == True:
-            print("{} coords shifted".format(np.sum(((diffs>boxsize/2)+(diffs<-boxsize/2)).flatten())))
+        if peaks.size>0:
+            diffs = peaks[:, 0:3]-merger_list[0][0][0:3]
+            merger_list[j+1][:,0:3][diffs>boxsize/2] -= boxsize
+            merger_list[j+1][:,0:3][diffs<-boxsize/2] += boxsize
+            if printOutput == True:
+                print("{} coords shifted".format(np.sum(((diffs>boxsize/2)+(diffs<-boxsize/2)).flatten())))
     return merger_list
 
 colors = ['b','r','m','g','y','k']
@@ -245,7 +287,7 @@ def plotMergerTree(merger_list, pp_file, printOutput = False):
     boxsize = p["boxsize"]
     matplotlib.rc('font', size=15)
     # Move peaks to account for periodic boundary conditions
-    merger_list = MoveOutOfBounds(merger_list, boxsize)
+    merger_list = MoveOutOfBounds(merger_list, boxsize, printOutput)
     plt.figure(figsize = (7, 5))
     for i, peaks in enumerate(merger_list):
         if printOutput == True:
@@ -253,7 +295,7 @@ def plotMergerTree(merger_list, pp_file, printOutput = False):
             
         # Check each peak for peaks at the earlier redshift
         for j in range(merger_list[i].shape[0]):
-            if i<len(merger_list)-1:
+            if i<len(merger_list)-1 and merger_list[i+1].size>0:
                 dists = np.sqrt(np.sum((merger_list[i][j,0:3]-merger_list[i+1][:,0:3])**2,axis=1))
                 inside_mask = dists<merger_list[i][j,3]
                 for index in np.where(inside_mask)[0]:
@@ -273,7 +315,7 @@ def plotMergerPatches(merger_list, pp_file, printOutput = False):
     boxsize = p["boxsize"]
     matplotlib.rc('font', size=15)
     # Move peaks to account for periodic boundary conditions
-    merger_list = MoveOutOfBounds(merger_list, boxsize)
+    merger_list = MoveOutOfBounds(merger_list, boxsize, printOutput)
     
     fig = plt.figure(figsize = (11,5))
     ax1 = fig.add_subplot(121)
@@ -301,3 +343,17 @@ def plotMergerPatches(merger_list, pp_file, printOutput = False):
         else:
             # No peak here
             pass
+        
+def FindCollapseRedshift(merger_tree, thresh_frac, pp_file):
+    p = ParamsFile(pp_file)
+    redshifts = p["redshifts"]  
+    
+    FinalMass = merger_tree[0][0, 4]
+    
+    ProgMass = np.zeros(len(redshifts))
+    for ri, redshift in enumerate(redshifts):
+        if merger_tree[ri].size > 0:
+            ProgMass[ri] = np.sum(merger_tree[ri][:, 4][merger_tree[ri][:, 4]>thresh_frac*FinalMass])
+    
+    CollapseRedshift = max(redshifts[ProgMass>FinalMass/2])
+    return CollapseRedshift

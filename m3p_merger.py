@@ -182,46 +182,8 @@ def FindAllSubHalos(ppInputsFile, printOutput = False):
       
     return final_peaks
 
-def BuildMergerTree(peak_list, pp_file, final_halo_index, redshift_indicies='all'):
-    p = ParamsFile(pp_file)
-    boxsize = p["boxsize"]  
-    
-    # if no redshifts chosen, use all of them
-    if redshift_indicies=='all':
-        redshift_indicies = np.arange(len(p["redshifts"]))
-    
-    # build KD trees
-    trees = [cKDTree(peak_list[i][0:3].T, boxsize = boxsize) for i in range(len(redshift_indicies))]
-    
-    peaks = np.zeros(len(redshift_indicies), dtype=object)
-    
-    peaks[0] = np.vstack(np.asarray(peak_list[0][:, final_halo_index])).T
-    
-    final_radius = peak_list[0][3,final_halo_index]
-    total_peaks = 0
-    for redshift_index in redshift_indicies[:-1]:
-        
-        # Check peaks at next (earlier) redshift to see if any are contained within the final radius
-        query = trees[redshift_index+1].query(peak_list[0][0:3, final_halo_index], k=100, eps=0)
-        
-        dists = query[0]
-        if len(dists[dists<final_radius]) == 100:
-            print("Error: Reached peak count limit")
-        #total_peaks += len(dists)
-        #print(total_peaks)
-        new_peaks = np.zeros(len(query[1][dists<final_radius]), dtype = object)
-        for i, index in enumerate(query[1][dists<final_radius]):
-            new_peaks[i] = peak_list[redshift_index+1][:, index]
-        #print(len(new_peaks))
-        if len(new_peaks) == 1:
-            peaks[redshift_index+1] = np.vstack(np.asarray(new_peaks))
-        elif new_peaks.size>0:
-            peaks[redshift_index+1] = np.vstack(np.asarray(new_peaks))
-        else:
-            peaks[redshift_index+1] = np.asarray([])
-    return peaks
 
-def BuildMergerTree2(peak_list, pp_file, final_halo_index, redshift_indicies='all'):
+def BuildMergerTree(peak_list, pp_file, final_halo_index, redshift_indicies='all'):
     p = ParamsFile(pp_file)
     boxsize = p["boxsize"]  
     final_radius = peak_list[0][3,final_halo_index]

@@ -7,6 +7,9 @@ from scipy.optimize import root_scalar
 from scipy.spatial import cKDTree
 import matplotlib.patches as mpatches
 import matplotlib
+import matplotlib.colors as colors
+import matplotlib.cm as cmx
+
 matplotlib.rcParams['mathtext.fontset'] = 'stix'
 matplotlib.rcParams['font.family'] = 'STIXGeneral'
 
@@ -152,15 +155,23 @@ def MakePeakList(ppFile, printOutput = False):
 
 
 
-def FindAllSubHalos(ppInputsFile, printOutput = False):
+def FindAllSubHalos(ppInputsFile, printOutput = False,redshift_indicies = 'all'):
     All_Peaks, boxsize = MakePeakList(ppInputsFile, printOutput = printOutput)
     num_redshifts = len(All_Peaks)
     
-    trees = [cKDTree(All_Peaks[i][0:3].T, boxsize = boxsize) for i in range(num_redshifts)]
+    # if no redshifts chosen, use all of them
+    if redshift_indicies=='all':
+        # Find latest redshift with peaks in it
+        sizes = np.zeros(len(peak_list))
+        for i in range(len(peak_list)):
+            sizes[i] = peak_list[i].size
+        redshift_indicies = np.arange(len(p["redshifts"]))[sizes>0]
+    
+    trees = [cKDTree(All_Peaks[i][0:3].T, boxsize = boxsize) for i in redshift_indicies]
     
     final_peaks = All_Peaks[-1]
 
-    for redshift_index in range(num_redshifts-1):
+    for redshift_index in redshift_indicies[:-1]:
         
         # Find nearest neighbor for every peak at this redshift
         query = trees[redshift_index+1].query(All_Peaks[redshift_index][0:3, :].T, k=1, eps=0)
@@ -228,10 +239,12 @@ def BuildMergerTree(peak_list, pp_file, final_halo_index, redshift_indicies='all
     
     # if no redshifts chosen, use all of them
     if redshift_indicies=='all':
-        redshift_indicies = np.arange(len(p["redshifts"]))
-    
-    # build KD trees
-    trees = [cKDTree(peak_list[i][0:3].T, boxsize = boxsize) for i in range(len(redshift_indicies))]
+        # Find latest redshift with peaks in it
+        sizes = np.zeros(len(peak_list))
+        for i in range(len(peak_list)):
+            sizes[i] = peak_list[i].size
+        redshift_indicies = np.arange(len(p["redshifts"]))[sizes>0]
+    trees = [cKDTree(peak_list[i][0:3].T, boxsize = boxsize) for i in redshift_indicies]
     
     peaks = np.zeros(len(redshift_indicies), dtype=object)  
     peaks[0] = np.vstack(np.asarray(peak_list[0][:, final_halo_index])).T
@@ -279,17 +292,31 @@ def MoveOutOfBounds(merger_list, boxsize, printOutput=False):
                 print("{} coords shifted".format(np.sum(((diffs>boxsize/2)+(diffs<-boxsize/2)).flatten())))
     return merger_list
 
-colors = ['b','r','m','g','y','k']
-def plotMergerTree(merger_list, pp_file, printOutput = False):
+
+
+def plotMergerTree(merger_list, pp_file, printOutput = False, cmap = 'gnuplot', font_size = 15):
+    # only plot for redshifts with peaks in them
+    last_index = 0
+    for i in range(len(merger_list)):
+        if merger_list[i].size > 0:
+            last_index += 1
     
     p = ParamsFile(pp_file)
     redshifts = p["redshifts"]  
     boxsize = p["boxsize"]
-    matplotlib.rc('font', size=15)
+   
     # Move peaks to account for periodic boundary conditions
     merger_list = MoveOutOfBounds(merger_list, boxsize, printOutput)
+    
+    # plotting info
+    matplotlib.rc('font', size=font_size)
+    colormap = cm = plt.get_cmap(cmap) 
+    cNorm  = colors.Normalize(redshifts[0], redshifts[last_index])
+    scalarMap = cmx.ScalarMappable(norm=cNorm, cmap=colormap)
+    
     plt.figure(figsize = (7, 5))
-    for i, peaks in enumerate(merger_list):
+    for i in range(last_index):
+        colorVal = scalarMap.to_rgba(redshifts[i])
         if printOutput == True:
             print("redshift index: {}".format(i))
             
@@ -299,17 +326,25 @@ def plotMergerTree(merger_list, pp_file, printOutput = False):
                 dists = np.sqrt(np.sum((merger_list[i][j,0:3]-merger_list[i+1][:,0:3])**2,axis=1))
                 inside_mask = dists<merger_list[i][j,3]
                 for index in np.where(inside_mask)[0]:
-                    plt.plot([i,i+1], [j-merger_list[i].shape[0]/2,index-merger_list[i+1].shape[0]/2], 'k--')
+                    plt.plot([redshifts[i],redshifts[i+1]], [j-merger_list[i].shape[0]/2,index-merger_list[i+1].shape[0]/2], 'k--')
                     #print(index, )
                 
-            plt.plot(i, j-merger_list[i].shape[0]/2,'o',color = colors[i], ms = 30*merger_list[i][j,3]/merger_list[0][0,3])    
+            plt.plot(redshifts[i], j-merger_list[i].shape[0]/2,'o', 
+                     ms = 30*merger_list[i][j,3]/merger_list[0][0,3], color = colorVal)    
             # 
-    plt.xticks(np.arange(i+1), redshifts) 
+            
     plt.yticks([])     
-    plt.xlim(len(merger_list), -1)
+    plt.xlim(redshifts[last_index], redshifts[0]*0.95)
     plt.xlabel("Redshift, $z$")
+
+
+def plotMergerPatches(merger_list, pp_file, printOutput = False, cmap = 'gnuplot'):
     
-def plotMergerPatches(merger_list, pp_file, printOutput = False):
+    last_index = 0
+    for i in range(len(merger_list)):
+        if merger_list[i].size > 0:
+            last_index += 1
+   
     p = ParamsFile(pp_file)
     redshifts = p["redshifts"]  
     boxsize = p["boxsize"]
@@ -317,7 +352,12 @@ def plotMergerPatches(merger_list, pp_file, printOutput = False):
     # Move peaks to account for periodic boundary conditions
     merger_list = MoveOutOfBounds(merger_list, boxsize, printOutput)
     
+    import matplotlib.colors as colors
     fig = plt.figure(figsize = (11,5))
+    colormap = cm = plt.get_cmap(cmap) 
+    cNorm  = colors.Normalize(redshifts[0], redshifts[last_index])
+    scalarMap = cmx.ScalarMappable(norm=cNorm, cmap=colormap)
+    
     ax1 = fig.add_subplot(121)
 
     ax1.set_xlim(merger_list[0][0,0]-merger_list[0][0,3], merger_list[0][0,0]+merger_list[0][0,3])
@@ -332,26 +372,33 @@ def plotMergerPatches(merger_list, pp_file, printOutput = False):
 
     colors = ['b','r','g','m','y','k']
     for i in range(len(merger_list)):
+        colorVal = scalarMap.to_rgba(redshifts[i])
         peaks = merger_list[i]
         #print(peaks, peaks.size)
         for peak in peaks:
-            pxy = mpatches.Circle((float(peak[0]), float(peak[1])), peak[3], alpha = 0.2, color = colors[i])
+            pxy = mpatches.Circle((float(peak[0]), float(peak[1])), peak[3], alpha = 0.2, color = colorVal)
             ax1.add_patch(pxy)
 
-            pxz = mpatches.Circle((float(peak[0]), float(peak[2])), peak[3], alpha = 0.2, color = colors[i])
+            pxz = mpatches.Circle((float(peak[0]), float(peak[2])), peak[3], alpha = 0.2, color = colorVal)
             ax2.add_patch(pxz)
         else:
             # No peak here
             pass
         
 def FindCollapseRedshift(merger_tree, thresh_frac, pp_file):
+    
+    last_index = 0
+    for i in range(len(merger_tree)):
+        if merger_tree[i].size > 0:
+            last_index += 1
+    
     p = ParamsFile(pp_file)
     redshifts = p["redshifts"]  
     
     FinalMass = merger_tree[0][0, 4]
     
     ProgMass = np.zeros(len(redshifts))
-    for ri, redshift in enumerate(redshifts):
+    for ri in range(last_index):
         if merger_tree[ri].size > 0:
             ProgMass[ri] = np.sum(merger_tree[ri][:, 4][merger_tree[ri][:, 4]>thresh_frac*FinalMass])
     

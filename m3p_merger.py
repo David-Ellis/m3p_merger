@@ -232,10 +232,9 @@ def FindAllSubHalos(ppInputsFile, printOutput = False,redshift_indicies = 'all')
 #             peaks[redshift_index+1] = np.asarray([])
 #     return peaks
 
-def BuildMergerTree(peak_list, pp_file, final_halo_index, redshift_indicies='all'):
+def BuildMergerTree(peak_list, pp_file, redshift_indicies='all', final_halos_indicies = 'all'):
     p = ParamsFile(pp_file)
     boxsize = p["boxsize"]  
-    final_radius = peak_list[0][3,final_halo_index]
     
     # if no redshifts chosen, use all of them
     if redshift_indicies=='all':
@@ -244,38 +243,49 @@ def BuildMergerTree(peak_list, pp_file, final_halo_index, redshift_indicies='all
         for i in range(len(peak_list)):
             sizes[i] = peak_list[i].size
         redshift_indicies = np.arange(len(p["redshifts"]))[sizes>0]
+        
     trees = [cKDTree(peak_list[i][0:3].T, boxsize = boxsize) for i in redshift_indicies]
     
-    peaks = np.zeros(len(redshift_indicies), dtype=object)  
-    peaks[0] = np.vstack(np.asarray(peak_list[0][:, final_halo_index])).T
-    
-    # Find all other sub-peaks 
-    for redshift_index in redshift_indicies[:-1]:
-        #print("Redshift index: {}".format(redshift_index))
-        # Check peaks at next (earlier) redshift to see if any are contained within the final radius
+    if final_halos_indicies == 'all':
+        final_halos_indicies = np.arange(len(peak_list[0].T))
+    # if only single final halo chosen, turn it into an array so that the code works
+    elif type(final_halos_indicies) == int:
+        final_halos_indicies = np.array([final_halos_indicies])
+    merger_trees = np.zeros(len(final_halos_indicies), dtype = object)
+    # Loop over all selected final halos
+    for hi, final_halo_index in enumerate(final_halos_indicies):
+        # Find all other sub-peaks 
+        final_radius = peak_list[0][3,final_halo_index] 
+        peaks = np.zeros(len(redshift_indicies), dtype=object)  
+        peaks[0] = np.vstack(np.asarray(peak_list[0][:, final_halo_index])).T
+        for redshift_index in redshift_indicies[:-1]:
+            #print("Redshift index: {}".format(redshift_index))
+            # Check peaks at next (earlier) redshift to see if any are contained within the final radius
 
-        new_peaks = []
-        if peaks[redshift_index].size>0:
-            for parent_index in range(len(peaks[redshift_index][:,0])):
-                query = trees[redshift_index+1].query(peaks[redshift_index][parent_index, 0:3], k=200, eps=0)
-                #print(parent_index)
-                dists = query[0]
-                radius = peaks[redshift_index][parent_index, 3]
-                #print(radius, ":", dists[0:3])
-                if len(dists[dists<radius]) == 100:
-                    print("Error: Reached peak count limit")
+            new_peaks = []
+            if peaks[redshift_index].size>0:
+                for parent_index in range(len(peaks[redshift_index][:,0])):
+                    query = trees[redshift_index+1].query(peaks[redshift_index][parent_index, 0:3], k=200, eps=0)
+                    #print(parent_index)
+                    dists = query[0]
+                    radius = peaks[redshift_index][parent_index, 3]
+                    #print(radius, ":", dists[0:3])
+                    if len(dists[dists<radius]) == 100:
+                        print("Error: Reached peak count limit")
 
-                for i, index in enumerate(query[1][dists<radius]):
-                    #print(peak_list[redshift_index+1][:, index])
-                    new_peaks.append(peak_list[redshift_index+1][:, index])  
-        new_peaks = np.asarray(new_peaks)
-        if len(new_peaks) == 1:
-            peaks[redshift_index+1] = np.vstack(np.asarray(new_peaks))
-        elif new_peaks.size>0:
-            peaks[redshift_index+1] = np.vstack(np.asarray(new_peaks))
-        else:
-            peaks[redshift_index+1] = np.asarray([])
-    return peaks
+                    for i, index in enumerate(query[1][dists<radius]):
+                        #print(peak_list[redshift_index+1][:, index])
+                        new_peaks.append(peak_list[redshift_index+1][:, index])  
+            new_peaks = np.asarray(new_peaks)
+            if len(new_peaks) == 1:
+                peaks[redshift_index+1] = np.vstack(np.asarray(new_peaks))
+            elif new_peaks.size>0:
+                peaks[redshift_index+1] = np.vstack(np.asarray(new_peaks))
+            else:
+                peaks[redshift_index+1] = np.asarray([])
+        # Store merger tree
+        merger_trees[hi] = peaks
+    return merger_trees
 
 def MoveOutOfBounds(merger_list, boxsize, printOutput=False):
     if printOutput == True:

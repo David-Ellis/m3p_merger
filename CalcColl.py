@@ -2,13 +2,15 @@
 CalcColl.py
 
 Basic script to calculate and save all merger trees for a given m3p data set.
+
+#TODO rewrite this as function in m3p_merger
 '''
 
 import numpy as np
 import m3p_merger
 
 # Peak patch data
-ppFile = "/usr/users/ellis/PeakPatch/m3p/inputs/inputs.ax_manyz"
+ppFile = "/usr/users/ellis/PeakPatch/m3p/inputs/inputs.axbig_manyz"
 print("Calculating collapse redshifts for final halos of m3p run: {}\n".format(ppFile))
 
 print("Building peak list...")
@@ -32,6 +34,6 @@ for i in range(len(out)):
 print("Done.\n")
 
 print("Saving data...")
-np.save("data/ax_manyz_CollapseRedshifts_f1em2", collapse_redshifts)
-np.save("data/ax_manyz_FinalMasses_f1em2", masses)
+np.save("data/axbig_manyz_CollapseRedshifts_f1em2", collapse_redshifts)
+np.save("data/axbig_manyz_FinalMasses_f1em2", masses)
 print("Done.\n")

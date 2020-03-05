@@ -238,6 +238,9 @@ def FindAllSubHalos(ppInputsFile, printOutput = False,redshift_indicies = 'all')
 #     return peaks
 
 def BuildMergerTree(peak_list, pp_file, redshift_indicies='all', final_halos_indicies = 'all', printOutput = False):
+    # TODO: Add function description
+    # TODO: Enable multi-theading
+    
     p = ParamsFile(pp_file)
     boxsize = p["boxsize"]  
     
@@ -258,8 +261,10 @@ def BuildMergerTree(peak_list, pp_file, redshift_indicies='all', final_halos_ind
     if final_halos_indicies == 'all':
         final_halos_indicies = np.arange(len(peak_list[0].T))
     # if only single final halo chosen, turn it into an array so that the code works
+    
     elif type(final_halos_indicies) == int:
         final_halos_indicies = np.array([final_halos_indicies])
+        
     merger_trees = np.zeros(len(final_halos_indicies), dtype = object)
     # Loop over all selected final halos
     for hi, final_halo_index in enumerate(final_halos_indicies):
@@ -274,13 +279,17 @@ def BuildMergerTree(peak_list, pp_file, redshift_indicies='all', final_halos_ind
             new_peaks = []
             if peaks[redshift_index].size>0:
                 for parent_index in range(len(peaks[redshift_index][:,0])):
-                    query = trees[redshift_index+1].query(peaks[redshift_index][parent_index, 0:3], k=200, eps=0)
+                    peak_count = 10
+                    query = trees[redshift_index+1].query(peaks[redshift_index][parent_index, 0:3], k=peak_count, eps=0)
                     #print(parent_index)
                     dists = query[0]
                     radius = peaks[redshift_index][parent_index, 3]
-                    #print(radius, ":", dists[0:3])
+                    
                     if len(dists[dists<radius]) == 100:
-                        print("Error: Reached peak count limit")
+                        peak_cout = peak_count+100
+                        query = trees[redshift_index+1].query(peaks[redshift_index][parent_index, 0:3], k=50, eps=0)
+                    #print(radius, ":", dists[0:3])
+                    
 
                     for i, index in enumerate(query[1][dists<radius]):
                         #print(peak_list[redshift_index+1][:, index])
@@ -294,12 +303,14 @@ def BuildMergerTree(peak_list, pp_file, redshift_indicies='all', final_halos_ind
                 peaks[redshift_index+1] = np.asarray([])
             if printOutput == True:
                 # print progress
-                print("\tHalo {} of {}: {} complete of {}".format(hi,len(final_halos_indicies), ri+1, len(redshift_indicies[:-1])), end = '\r')
+                print("\tHalo {} of {}: {} complete of {}".format(hi,len(final_halos_indicies), 
+                                                                  ri+1, len(redshift_indicies[:-1])), end = '\r')
+        merger_trees[hi] = peaks
     if printOutput == True:
         # print new line
         print()
         # Store merger tree
-        merger_trees[hi] = peaks
+        
     return merger_trees
 
 def MoveOutOfBounds(merger_list, boxsize, printOutput=False):
@@ -320,9 +331,13 @@ def MoveOutOfBounds(merger_list, boxsize, printOutput=False):
 
 
 def plotMergerTree(merger_list, pp_file, printOutput = False, cmap = 'gnuplot', font_size = 15, log = False):
+    # TODO: Add function description
+    # TODO: Add colorbar()
+    # TODO: Add choice for what colormap should be based on
+    
     # only plot for redshifts with peaks in them
     last_index = 0
-    for i in range(len(merger_list)):
+    for i in range(len(merger_list)-1):
         if merger_list[i].size > 0:
             last_index += 1
     
@@ -367,7 +382,7 @@ def plotMergerTree(merger_list, pp_file, printOutput = False, cmap = 'gnuplot', 
 def plotMergerPatches(merger_list, pp_file, printOutput = False, cmap = 'gnuplot'):
     
     last_index = 0
-    for i in range(len(merger_list)):
+    for i in range(len(merger_list)-1):
         if merger_list[i].size > 0:
             last_index += 1
    
@@ -411,22 +426,51 @@ def plotMergerPatches(merger_list, pp_file, printOutput = False, cmap = 'gnuplot
             # No peak here
             pass
         
-def FindCollapseRedshift(merger_tree, thresh_frac, pp_file):
-    
+def FindCollapseRedshift(merger_tree, thresh_frac, pp_file, printOutput = False, interp = "None"):
     last_index = 0
     for i in range(len(merger_tree)):
         if merger_tree[i].size > 0:
             last_index += 1
     
     p = ParamsFile(pp_file)
-    redshifts = p["redshifts"]  
+    redshifts = p["redshifts"][:last_index] 
     
     FinalMass = merger_tree[0][0, 4]
     
     ProgMass = np.zeros(len(redshifts))
     for ri in range(last_index):
         if merger_tree[ri].size > 0:
-            ProgMass[ri] = np.sum(merger_tree[ri][:, 4][merger_tree[ri][:, 4]>thresh_frac*FinalMass])
+            ProgMass[ri] = np.sum(merger_tree[ri][:, 4][merger_tree[ri][:, 4]>=thresh_frac*FinalMass])
     
-    CollapseRedshift = max(redshifts[ProgMass>FinalMass/2])
+    if interp == "None":
+        # No interpolation:
+        # just find maximum redshift which meets the M>M_tot/2 requirement
+        if printOutput == True:
+            print(max(ProgMass), FinalMass/2)
+        CollapseRedshift = max(redshifts[ProgMass>=FinalMass/2])
+    elif interp == "Linear":
+        # Linear interpolation:
+        
+        # Find index of redshift before requirement met
+        n = np.where(redshifts == min(redshifts[ProgMass<=FinalMass/2]))[0][0]
+
+        #print(np.where(redshifts == max(redshifts[ProgMass<=FinalMass/2])))
+        del_M = ProgMass[n-1] - ProgMass[n]
+        del_z = redshifts[n] - redshifts[n-1]
+        CollapseRedshift = redshifts[n] - (FinalMass/2 - ProgMass[n])*(del_z/del_M)
+        if printOutput == True:
+            print("n = ", n)
+            print("log10(ProgMasses):")
+            print(np.log10(ProgMass))
+            print("log10(redshifts):")
+            print(np.log10(redshifts))
+            print("del_M = ", del_M)
+            print("del_z = ", del_z)
+            print("z_n = {:.3}, z_n+1 = {:.3}".format(redshifts[n],redshifts[n-1]))
+            print("z_col = {:.3}".format(CollapseRedshift))
+#         print(redshifts[n], ProgMass[n], del_M/del_z)             
+        # Linear interpolation equation:
+        #       z_col = z_n + (M_1/2 - M_n)*(dz/dM)
+        
+                     
     return CollapseRedshift

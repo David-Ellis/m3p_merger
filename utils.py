@@ -28,7 +28,7 @@ class ParamsFile(OrderedDict):
     def __init__(self,fname=None):
         self.float_types = ["boxsize","max_filter_radius","peak_threshold"]
         self.bool_types = []
-        self.int_types = ["ics.seed","n_cell","max_grid_size","nfilters"]
+        self.int_types = ["ics.seed","n_cell","max_grid_size","nfilters", "n_ghost_cell_overlap"]
         self.float_vector_types = ["redshifts","filter_scales"]
         self.int_vector_types = []
         

@@ -88,7 +88,7 @@ def FindDeltaSpectrum(Peaks, DensityFile, ppFile):
 
 def MakePeakList(ppFile, startIndex = 0, printOutput = False):
     # Makes a list of peaks to be used by the sub peak finder
-    p = ParamsFile(ppFile)
+    p = ParamsFile("inputs/" + ppFile)
     
     # Figure out the path to the directory containing the ppFile
     path = '/'.join(ppFile.split('/')[:-1])
@@ -249,7 +249,7 @@ def BuildMergerTree(peak_list, pp_file, redshift_indicies='all', final_halos_ind
     # TODO: Add function description
     # TODO: Enable multi-theading
     
-    p = ParamsFile(pp_file)
+    p = ParamsFile("inputs/" + pp_file)
     boxsize = p["boxsize"]  
     
     # if no redshifts chosen, use all of them
@@ -351,7 +351,7 @@ def volInt(r1, r2, d):
     elif d == 0:
         Vol = 4/3*np.pi*min(r1, r2)**3
     
-    return A*B*C
+    return Vol
     
 
 def BuildMergerTree2(peak_list, pp_file, redshift_indicies='all', final_halos_indicies = 'all', printOutput = False):
@@ -364,7 +364,7 @@ def BuildMergerTree2(peak_list, pp_file, redshift_indicies='all', final_halos_in
     # TODO: Add function description
     # TODO: Enable multi-theading
     
-    p = ParamsFile(pp_file)
+    p = ParamsFile("inputs/" + pp_file)
     boxsize = p["boxsize"]  
     
     # if no redshifts chosen, use all of them
@@ -487,7 +487,7 @@ def plotMergerTree(merger_list, pp_file,startIndex=0, printOutput = False, cmap 
         if merger_list[i].size > 0:
             last_index += 1
     
-    p = ParamsFile(pp_file)
+    p = ParamsFile("inputs/" + pp_file)
     redshifts = p["redshifts"][startIndex:]
     boxsize = p["boxsize"]
    
@@ -545,7 +545,7 @@ def plotMergerPatches(merger_list, pp_file, printOutput = False, cmap = 'gnuplot
         if merger_list[i].size > 0:
             last_index += 1
    
-    p = ParamsFile(pp_file)
+    p = ParamsFile("inputs/" + pp_file)
     redshifts = p["redshifts"]  
     boxsize = p["boxsize"]
     matplotlib.rc('font', size=15)
@@ -592,7 +592,7 @@ def FindCollapseRedshift(merger_tree, thresh_frac, pp_file,
 #         if merger_tree[i].size > 0:
 #             last_index += 1
     
-    p = ParamsFile(pp_file)
+    p = ParamsFile("inputs/" + pp_file)
     redshifts = p["redshifts"][-len(merger_tree):]
     #print(redshifts[0], redshifts[-1])
     FinalMass = merger_tree[0][0, 4]

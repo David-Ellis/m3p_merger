@@ -330,6 +330,134 @@ dists = {}
         
     return merger_trees
 
+def volInt(r1, r2, d):
+    """
+    Calculates volume of intersecting region of two spheres or radius r1 and r2
+    seperated by a distance d
+    
+    https://en.wikipedia.org/wiki/Spherical_cap
+    """
+    
+    errMsg = "volInt(): Spheres do not intersect!\nr1={:.3}, r2={:.3}, d={:.3}".format(r1, r2, d)
+    assert r1+r2>d, errMsg
+    
+    if d > 0:
+        A = np.pi/(12*d)
+        B = (r1+r2-d)**2
+        C = (d**2+2*d*(r1+r2)-3*(r1-r2)**2)
+        
+        Vol = A*B*C
+        
+    elif d == 0:
+        Vol = 4/3*np.pi*min(r1, r2)**3
+    
+    return A*B*C
+    
+
+def BuildMergerTree2(peak_list, pp_file, redshift_indicies='all', final_halos_indicies = 'all', printOutput = False):
+    '''
+    Builds lists of progenitor peaks for one (or multiple) final peak(s).
+       Progenitors are defined to be all peaks contained within the comoving radius of the product (final) halo.
+       
+       Trying to build new version that counts all mass within final radius
+    '''
+    # TODO: Add function description
+    # TODO: Enable multi-theading
+    
+    p = ParamsFile(pp_file)
+    boxsize = p["boxsize"]  
+    
+    # if no redshifts chosen, use all of them
+    if redshift_indicies=='all':
+        # Find latest redshift with peaks in it
+        sizes = np.zeros(len(peak_list))
+        for i in range(len(peak_list)):
+            sizes[i] = peak_list[i].size
+        redshift_indicies = np.arange(len(peak_list))[sizes>0]
+        
+    if printOutput == True:
+        print("\tFinal redshift index {} out of {}".format(max(redshift_indicies), len(peak_list)))
+        print("\ti.e. Earlist halo at z = {}".format(p["redshifts"][max(redshift_indicies)]))
+        
+    trees = [cKDTree(peak_list[i][0:3].T, boxsize = boxsize) for i in redshift_indicies]
+    
+    if final_halos_indicies == 'all':
+        final_halos_indicies = np.arange(len(peak_list[0].T))
+    # if only single final halo chosen, turn it into an array so that the code works
+    
+    elif type(final_halos_indicies) == int:
+        final_halos_indicies = np.array([final_halos_indicies])
+        
+    merger_trees = np.zeros(len(final_halos_indicies), dtype = object)
+    
+    # Loop over all selected final halos
+    for hi, final_halo_index in enumerate(final_halos_indicies):
+        # Find all other sub-peaks 
+        final_radius = peak_list[0][3,final_halo_index] 
+        peaks = np.zeros(len(redshift_indicies), dtype=object)  
+        peaks[0] = np.vstack(np.asarray(peak_list[0][:, final_halo_index])).T
+        for ri, redshift_index in enumerate(redshift_indicies[:-1]):
+            new_peaks = []
+            
+            if peaks[redshift_index].size>0:
+                peak_count = 10
+                query = trees[redshift_index+1].query(peak_list[0][0:3,final_halo_index], k=peak_count, eps=0)
+                dists = query[0]
+                radius = final_radius #peaks[redshift_index][parent_index, 3]
+    
+                # Keep finding more peaks until some are further away than 2x the radius
+                while len(dists[dists<2*radius]) == peak_count:
+                    peak_count = peak_count+100
+                    query = trees[redshift_index+1].query(peak_list[0][0:3,final_halo_index], k=peak_count, eps=0)
+                    dists = query[0]
+                    #query = trees[redshift_index+1].query(peaks[redshift_index][parent_index, 0:3], k=50, eps=0)
+                #print(radius, ":", dists[0:3])
+
+                
+                for i, index in enumerate(query[1][dists<2*radius]):
+                    # Check if any overlap
+                    subPeakRadius = peak_list[redshift_index+1][3, index]
+                    if dists[i]<radius+subPeakRadius:
+                        # Calculate volume of overlap and the mass of the sub-halo in that region 
+                        volumeOverlap = volInt(radius, subPeakRadius, dists[i])
+                        # TODO: Don't hard code this density
+                        massInside = volumeOverlap*8.66e+10 # Density from m3p
+                        # Store sub-halo with this new mass
+                        subPeak = peak_list[redshift_index+1][:, index]
+                        subPeak[4] = massInside
+                        
+                        new_peaks.append(subPeak)  
+
+                # Check all the new peaks are within 2* final halo radius
+                if len(new_peaks)>0:
+                    query = trees[redshift_index+1].query(peak_list[0][0:3,final_halo_index], k=len(new_peaks), eps=0)
+                    dists = np.array(query[0])
+                    insideFinal = len(dists[dists<2*final_radius])
+                    assert insideFinal == len(new_peaks), '''
+{} peaks found but only {} are within 2* final halo radius
+final_radius = {}
+dists = {}
+'''.format(len(new_peaks),insideFinal,final_radius, dists)
+                        
+            new_peaks = np.asarray(new_peaks)
+            if len(new_peaks) == 1:
+                peaks[redshift_index+1] = np.vstack(np.asarray(new_peaks))
+            elif new_peaks.size>0:
+                peaks[redshift_index+1] = np.vstack(np.asarray(new_peaks))
+            else:
+                peaks[redshift_index+1] = np.asarray([])
+            if printOutput == True:
+                # print progress
+                print("\tHalo {} of {}: {} complete of {}".format(hi,len(final_halos_indicies), 
+                                                                  ri+1, len(redshift_indicies[:-1])), end = '\r')
+        merger_trees[hi] = peaks
+    if printOutput == True:
+        # print new line
+        print()
+        # Store merger tree
+        
+    return merger_trees
+
 
 def MoveOutOfBounds(merger_list, boxsize, printOutput=False):
     if printOutput == True:

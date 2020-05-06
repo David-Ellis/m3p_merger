@@ -348,10 +348,10 @@ def MoveOutOfBounds(merger_list, boxsize, printOutput=False):
 
 
 
-def plotMergerTree(merger_list, pp_file,startIndex=0, printOutput = False, cmap = 'gnuplot', font_size = 15, log = False):
+def plotMergerTree(merger_list, pp_file,startIndex=0, printOutput = False, cmap = 'gnuplot_r', font_size = 15, log = False, colorbar = False, colorbar_title = None):
     # TODO: Add function description
-    # TODO: Add colorbar()
-    # TODO: Add choice for what colormap should be based on
+    # TODO: Sort heights of peaks based on y-axis posn or something.
+            
     
     # only plot for redshifts with peaks in them
     last_index = 0
@@ -368,33 +368,46 @@ def plotMergerTree(merger_list, pp_file,startIndex=0, printOutput = False, cmap 
     
     # plotting info
     matplotlib.rc('font', size=font_size)
+    #print(merger_list[-1][:,4]
+    # Colour on mass
     colormap = cm = plt.get_cmap(cmap) 
-    cNorm  = colors.Normalize(redshifts[0], redshifts[last_index])
+    cNorm  = colors.Normalize(np.log10(1e-15), np.log10(merger_list[0][0,4]))
     scalarMap = cmx.ScalarMappable(norm=cNorm, cmap=colormap)
     
-    plt.figure(figsize = (7, 5))
+    fig = plt.figure(figsize = (7, 5))
     for i in range(last_index):
-        colorVal = scalarMap.to_rgba(redshifts[i])
+        
         if printOutput == True:
             print("redshift index: {}".format(i))
             
         # Check each peak for peaks at the earlier redshift
         for j in range(merger_list[i].shape[0]):
             if i<len(merger_list)-1 and merger_list[i+1].size>0:
+                #print(merger_list[i+1][:,0:3],"\n", merger_list[i+1][:,3])
                 dists = np.sqrt(np.sum((merger_list[i][j,0:3]-merger_list[i+1][:,0:3])**2,axis=1))
-                inside_mask = dists<merger_list[i][j,3]
+                inside_mask = dists<merger_list[i][j,3]+merger_list[i+1][:,3]/2
                 for index in np.where(inside_mask)[0]:
                     plt.plot([redshifts[i],redshifts[i+1]], [j-merger_list[i].shape[0]/2,index-merger_list[i+1].shape[0]/2], 'k--')
                     #print(index, )
-                
+                    
+            colorVal = scalarMap.to_rgba(np.log10(merger_list[i][j,4]))    
             plt.plot(redshifts[i], j-merger_list[i].shape[0]/2,'o',
                      ms = 30*merger_list[i][j,3]/merger_list[0][0,3], color = colorVal)    
             # 
     if log == True:
         plt.xscale('log')
     plt.yticks([])     
-    plt.xlim(redshifts[last_index], redshifts[0]*0.95)
+    plt.xlim(redshifts[last_index], redshifts[0]*0.8)
     plt.xlabel("Redshift, $z$")
+    
+    if colorbar == True:
+        scalarMap.set_array([])
+        cbar = fig.colorbar(scalarMap)
+        if colorbar_title != None:
+            assert type(colorbar_title) == str, "Error: colorbar_title must be a string"
+            cbar.ax.set_ylabel(colorbar_title)
+            
+    return fig
 
 
 def plotMergerPatches(merger_list, pp_file, printOutput = False, cmap = 'gnuplot'):

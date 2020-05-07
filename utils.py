@@ -1,3 +1,5 @@
+# Taken from https://github.com/cbehren/m3p
+
 import numpy as np
 from astropy import units as u
 import h5py

@@ -479,6 +479,7 @@ def MoveOutOfBounds(merger_list, boxsize, printOutput=False):
 def plotMergerTree(merger_list, pp_file,startIndex=0, printOutput = False, cmap = 'gnuplot_r', font_size = 15, log = False, colorbar = False, colorbar_title = None):
     # TODO: Add function description
     # TODO: Sort heights of peaks based on y-axis posn or something.
+    # TODO: Add minimum mass filter
             
     
     # only plot for redshifts with peaks in them
@@ -520,7 +521,7 @@ def plotMergerTree(merger_list, pp_file,startIndex=0, printOutput = False, cmap 
                     
             colorVal = scalarMap.to_rgba(np.log10(merger_list[i][j,4]))    
             plt.plot(redshifts[i], j-merger_list[i].shape[0]/2,'o',
-                     ms = 30*merger_list[i][j,3]/merger_list[0][0,3], color = colorVal)    
+                     ms = 30*merger_list[i][j,4]/merger_list[0][0,4], color = colorVal)    
             # 
     if log == True:
         plt.xscale('log')

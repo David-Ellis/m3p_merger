@@ -28,7 +28,7 @@ a_eq = 1/(1+z_eq)
 rho_eq = Omega_m0*(a_eq)**3
 
 
-def PS_Prob(z, M, z0, siglog, f = 0.01):
+def PS_Prob(z, M, z0, sig, f = 0.01):
     '''Calculate probability of halo projenitors at z having mass greater than f*M
     where M is the mass at the final redshift z0
     
@@ -44,8 +44,8 @@ def PS_Prob(z, M, z0, siglog, f = 0.01):
     -------
     prob : probablity (float)
     '''
-    sig1 = 10**(siglog(np.log10(f*M)))
-    sig2 = 10**(siglog(np.log10(M)))
+    sig1 = sig(f*M)
+    sig2 = sig(M)
     
     prob = erf((thresh(z)-thresh(z0))/np.sqrt(2*(sig1**2 - sig2**2)))
     return prob
@@ -68,7 +68,7 @@ def Find_zcol(Pdata, kdata, masses, z0, f = 0.01, printOutput = False):
     z_col = np.zeros(len(masses))
     
     HMF_PS, M2, f_PS, sigma, slinedata = PS_HMF(Pdata, kdata, z=z0)
-    siglog = interp1d(np.log10(M2), np.log10(sigma))
+    sig = interp1d(M2, sigma)
     
     if f*min(masses)<min(M2):
         print("Error: Desired mass and proj fraction too small for HMF data")
@@ -76,7 +76,7 @@ def Find_zcol(Pdata, kdata, masses, z0, f = 0.01, printOutput = False):
         print("min(HMF mass) = {} Msol".format(min(M2)))
     
     for i, M in enumerate(masses):
-        sol = root_scalar(solve_PS_Prob, args = (M, z0, siglog, f), bracket=(1e7, 1e-1))
+        sol = root_scalar(solve_PS_Prob, args = (M, z0, sig, f), bracket=(1e7, 1e-1))
         if sol.converged == True:
             z_col[i] = sol.root
         else:
@@ -247,7 +247,7 @@ def solve_conc(scale_densitys):
     concs = np.zeros(len(scale_densitys))
     for i in range(len(scale_densitys)):
         #print(i, end = ' ')
-        sol = root_scalar(find_conc, args = scale_densitys[i], bracket=(1e-4, 1e6))
+        sol = root_scalar(find_conc, args = scale_densitys[i], bracket=(1e-4, 1e8))
         if sol.converged == True:
             concs[i] = sol.root
         else:

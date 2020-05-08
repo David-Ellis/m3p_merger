@@ -254,10 +254,10 @@ def solve_conc(scale_densitys):
             unconverged += 1
     return concs
     
-def pred_conc(mass, C, z0, zcol =  None, pspec = None, mode = "NFW", f = 0.01):
+def pred_conc(mass, C, z0, zcol = [], pspec = None, mode = "NFW", f = 0.01):
     assert (mode == "NFW") or (mode == "Bullock"), "Error: mode not recognised."
     
-    if zcol == None:
+    if zcol == []:
         assert pspec != None, \
         "Collapse redshift undefined. Therefore require power spectrum data."
         # Unpack power spectrum data
@@ -282,8 +282,9 @@ def massfrac(pspec, redshifts, Mtot, mode = "PS"):
     ''' Use PS to estimate bound mass fraction
     '''
     
-    assert mode == "PS" or mode == "ST" or mode == "TK", \
-    "cal_massfrac() Error: Mode not recognised. Use PS, ST or TK."
+    assert mode == "PS" or mode == "ST", \
+    '''cal_massfrac() Error: Mode not recognised. Use PS, ST. 
+    TK currently not working for mass frac calculations'''
     
     Pdata, kdata = pspec
     
@@ -297,8 +298,9 @@ def massfrac(pspec, redshifts, Mtot, mode = "PS"):
 def haloNums(pspec, redshifts, boxVol, cutoffmasses=[0], mode="PS"):
     ''' Use PS to estimate number of halos
     '''
-    assert mode == "PS" or mode == "ST" or mode == "TK", \
-    "cal_massfrac() Error: Mode not recognised. Use PS, ST or TK."
+    assert mode == "PS" or mode == "ST", \
+    '''cal_massfrac() Error: Mode not recognised. Use PS, ST. 
+    TK currently not working for halo num calculations'''
     
     Pdata, kdata = pspec
         

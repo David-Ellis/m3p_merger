@@ -419,7 +419,7 @@ def BuildMergerTree2(peak_list, pp_file, redshift_indicies='all', final_halos_in
                     subPeakRadius = peak_list[redshift_index+1][3, index]
                     if dists[i]<radius+subPeakRadius:
                         # Calculate volume of overlap and the mass of the sub-halo in that region 
-                        volumeOverlap = volInt(radius, subPeakRadius, dists[i])
+                        volumeOverlap = abs(volInt(radius, subPeakRadius, dists[i]))
                         # TODO: Don't hard code this density
                         massInside = volumeOverlap*8.66e+10 # Density from m3p
                         # Store sub-halo with this new mass
@@ -474,13 +474,31 @@ def MoveOutOfBounds(merger_list, boxsize, printOutput=False):
                 print("{} coords shifted".format(np.sum(((diffs>boxsize/2)+(diffs<-boxsize/2)).flatten())))
     return merger_list
 
+def pruneLowMasses(merger_list, min_mass, printOutput=False):
+    '''Removes low mass halos from list '''
+    if printOutput == True:
+        print("Removing small halos...")
 
+    for j, peaks in enumerate(merger_list[1:]):
+        if printOutput == True:
+            print("redshift index: {}".format(j+1))
+        if peaks.size>0:
+            masses = peaks[:, 4]
+            merger_list[j+1] = merger_list[j+1][masses > min_mass]
+                
+    return merger_list
 
-def plotMergerTree(merger_list, pp_file,startIndex=0, printOutput = False, cmap = 'gnuplot_r', font_size = 15, log = False, colorbar = False, colorbar_title = None):
+    
+
+def plotMergerTree(merger_list, pp_file,startIndex=0, printOutput = False, 
+                   cmap = 'gnuplot_r', font_size = 15, log = False, colorbar = False, 
+                   colorbar_title = None, min_mass = 0):
     # TODO: Add function description
     # TODO: Sort heights of peaks based on y-axis posn or something.
     # TODO: Add minimum mass filter
             
+    # Filter out low mass halos
+    merger_list = pruneLowMasses(merger_list, min_mass, printOutput)
     
     # only plot for redshifts with peaks in them
     last_index = 0
@@ -519,9 +537,10 @@ def plotMergerTree(merger_list, pp_file,startIndex=0, printOutput = False, cmap 
                     plt.plot([redshifts[i],redshifts[i+1]], [j-merger_list[i].shape[0]/2,index-merger_list[i+1].shape[0]/2], 'k--')
                     #print(index, )
                     
+            ms = 30*merger_list[i][j,3]/merger_list[0][0,3]
             colorVal = scalarMap.to_rgba(np.log10(merger_list[i][j,4]))    
             plt.plot(redshifts[i], j-merger_list[i].shape[0]/2,'o',
-                     ms = 30*merger_list[i][j,4]/merger_list[0][0,4], color = colorVal)    
+                     ms = ms, color = colorVal)    
             # 
     if log == True:
         plt.xscale('log')

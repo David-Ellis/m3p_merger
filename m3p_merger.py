@@ -518,7 +518,7 @@ def plotMergerTree(merger_list, pp_file,startIndex=0, printOutput = False,
     #print(merger_list[-1][:,4]
     # Colour on mass
     colormap = cm = plt.get_cmap(cmap) 
-    cNorm  = colors.Normalize(np.log10(1e-15), np.log10(merger_list[0][0,4]))
+    cNorm  = colors.Normalize(np.log10(max(1e-15, min_mass)), np.log10(merger_list[0][0,4]))
     scalarMap = cmx.ScalarMappable(norm=cNorm, cmap=colormap)
     
     fig = plt.figure(figsize = (7, 5))
@@ -532,7 +532,7 @@ def plotMergerTree(merger_list, pp_file,startIndex=0, printOutput = False,
             if i<len(merger_list)-1 and merger_list[i+1].size>0:
                 #print(merger_list[i+1][:,0:3],"\n", merger_list[i+1][:,3])
                 dists = np.sqrt(np.sum((merger_list[i][j,0:3]-merger_list[i+1][:,0:3])**2,axis=1))
-                inside_mask = dists<merger_list[i][j,3]+merger_list[i+1][:,3]/2
+                inside_mask = dists<merger_list[i][j,3]+2*merger_list[i+1][:,3]/3
                 for index in np.where(inside_mask)[0]:
                     plt.plot([redshifts[i],redshifts[i+1]], [j-merger_list[i].shape[0]/2,index-merger_list[i+1].shape[0]/2], 'k--')
                     #print(index, )

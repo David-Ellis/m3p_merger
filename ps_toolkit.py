@@ -1,6 +1,6 @@
 import numpy as np
 from scipy.interpolate import interp1d
-from scipy.special import erf, erfinv
+from scipy.special import erfc, erfinv
 from scipy.optimize import root_scalar
 
 # TODO: Take cosmology as an input
@@ -38,7 +38,7 @@ def PS_Prob(z, M, z0, sig, f = 0.01):
     M : Mass M_sol (float)
     z0 : final redshift
     siglog: interpolated function for the log of the mass variance 
-    f (optional): fraction of total mass for progenitors (float)
+    f = 0.01 (optional): fraction of total mass for progenitors (float)
 
     Returns
     -------
@@ -47,7 +47,10 @@ def PS_Prob(z, M, z0, sig, f = 0.01):
     sig1 = sig(f*M)
     sig2 = sig(M)
     
-    prob = erf((thresh(z)-thresh(z0))/np.sqrt(2*(sig1**2 - sig2**2)))
+    #test_thresh = 1.69*(z-z0)*(z0+1)
+    test_thresh = thresh(z)/(GrowthFactor(z)/GrowthFactor(0))-thresh(z0)/(GrowthFactor(z0)/GrowthFactor(0))
+    prob = erfc(test_thresh/np.sqrt(2*(sig1**2 - sig2**2)))
+    #prob = erf((thresh(z)-thresh(0))/np.sqrt(2*(sig1**2 - sig2**2)))
     return prob
 
 def solve_PS_Prob(z, M, z0, siglog, f, printOutput = False):
@@ -67,8 +70,9 @@ def Find_zcol(Pdata, kdata, masses, z0, f = 0.01, printOutput = False):
     unconverged = 0
     z_col = np.zeros(len(masses))
     
-    HMF_PS, M2, f_PS, sigma, slinedata = PS_HMF(Pdata, kdata, z=z0)
-    sig = interp1d(M2, sigma)
+    HMF_PS, M2, f_PS, sigma0, slinedata = PS_HMF(Pdata, kdata, z=0)
+    
+    sig = interp1d(M2, sigma0)
     
     if f*min(masses)<min(M2):
         print("Error: Desired mass and proj fraction too small for HMF data")
@@ -76,7 +80,7 @@ def Find_zcol(Pdata, kdata, masses, z0, f = 0.01, printOutput = False):
         print("min(HMF mass) = {} Msol".format(min(M2)))
     
     for i, M in enumerate(masses):
-        sol = root_scalar(solve_PS_Prob, args = (M, z0, sig, f), bracket=(1e7, 1e-1))
+        sol = root_scalar(solve_PS_Prob, args = (M, z0, sig, f), bracket=(1e7, z0))
         if sol.converged == True:
             z_col[i] = sol.root
         else:
@@ -205,7 +209,7 @@ def PS_HMF(P0, k, z=0, mode = 'PS', printOutput = False):
     # Evolved powerSpec
     #P0 = P0*(GrowthFactor(z)/GrowthFactor(0))**2
     #pspec_evo = PowerSpec(k, P0)
-    k2 = np.logspace(np.log10(pspec.klow)-1, np.log10(pspec.khigh)+2, int(1e4))
+    k2 = np.logspace(np.log10(pspec.klow)-3, np.log10(pspec.khigh)+3, int(1e4))
                      
     R = np.logspace(np.log10(2*np.pi/max(k2)), np.log10(2*np.pi/min(k2)), 200) # h^(-1) Mpc
     if printOutput == True:

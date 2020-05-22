@@ -396,8 +396,13 @@ def BuildMergerTree2(peak_list, pp_file, redshift_indicies='all', final_halos_in
     for hi, final_halo_index in enumerate(final_halos_indicies):
         # Find all other sub-peaks 
         final_radius = peak_list[0][3,final_halo_index] 
+        
+        # max radius at this redshift
+        max_radius = max(peak_list[0][3, :])
+        
         peaks = np.zeros(len(redshift_indicies), dtype=object)  
         peaks[0] = np.vstack(np.asarray(peak_list[0][:, final_halo_index])).T
+        
         for ri, redshift_index in enumerate(redshift_indicies[:-1]):
             new_peaks = []
             
@@ -405,26 +410,29 @@ def BuildMergerTree2(peak_list, pp_file, redshift_indicies='all', final_halos_in
                 peak_count = 10
                 query = trees[redshift_index+1].query(peak_list[0][0:3,final_halo_index], k=peak_count, eps=0)
                 dists = query[0]
-                radius = final_radius #peaks[redshift_index][parent_index, 3]
     
-                # Keep finding more peaks until some are further away than 2x the radius
-                while len(dists[dists<2*radius]) == peak_count:
+                # Keep finding more peaks until some are further away than final_radius + max_radius
+                while len(dists[dists < final_radius + max_radius]) == peak_count:
                     peak_count = peak_count+100
                     query = trees[redshift_index+1].query(peak_list[0][0:3,final_halo_index], k=peak_count, eps=0)
                     dists = query[0]
-                    #query = trees[redshift_index+1].query(peaks[redshift_index][parent_index, 0:3], k=50, eps=0)
-                #print(radius, ":", dists[0:3])
 
                 
-                for i, index in enumerate(query[1][dists<2*radius]):
+                for i, index in enumerate(query[1][dists < final_radius + max_radius]):
                     # Check if any overlap
                     subPeakRadius = peak_list[redshift_index+1][3, index]
-                    if dists[i]<radius+subPeakRadius:
+                    
+                    if dists[i]<final_radius+subPeakRadius:
+                        
                         # Calculate volume of overlap and the mass of the sub-halo in that region 
-                        volumeOverlap = abs(volInt(radius, subPeakRadius, dists[i]))
+                        volumeOverlap = volInt(final_radius, subPeakRadius, dists[i])
+                        assert volumeOverlap >= 0, "Volume must be positive"
+                        
+                        # Calculate effective mass and density
                         # TODO: Don't hard code this density
                         massInside = volumeOverlap*8.66e+10 # Density from m3p
                         r_effective = (3*volumeOverlap/(4*np.pi))**(1/3)
+                        
                         # Store sub-halo with this new mass and effective radius
                         subPeak = peak_list[redshift_index+1][:, index]
                         subPeak[4] = massInside

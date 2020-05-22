@@ -338,17 +338,19 @@ def volInt(r1, r2, d):
     https://en.wikipedia.org/wiki/Spherical_cap
     """
     
-    errMsg = "volInt(): Spheres do not intersect!\nr1={:.3}, r2={:.3}, d={:.3}".format(r1, r2, d)
-    assert r1+r2>d, errMsg
+    # Ensure values are positive
+    assert (r1 >= 0)*(r2 >= 0)*(d >= 0), "Input values must be positive!"
     
-    if d > 0:
+    if d > r1+r2:
+        Vol = 0 
+    elif d > abs(r1 - r2):
         A = np.pi/(12*d)
         B = (r1+r2-d)**2
         C = (d**2+2*d*(r1+r2)-3*(r1-r2)**2)
         
         Vol = A*B*C
-        
-    elif d == 0:
+ 
+    elif d <= abs(r1 - r2):
         Vol = 4/3*np.pi*min(r1, r2)**3
     
     return Vol
@@ -422,9 +424,11 @@ def BuildMergerTree2(peak_list, pp_file, redshift_indicies='all', final_halos_in
                         volumeOverlap = abs(volInt(radius, subPeakRadius, dists[i]))
                         # TODO: Don't hard code this density
                         massInside = volumeOverlap*8.66e+10 # Density from m3p
-                        # Store sub-halo with this new mass
+                        r_effective = (3*volumeOverlap/(4*np.pi))**(1/3)
+                        # Store sub-halo with this new mass and effective radius
                         subPeak = peak_list[redshift_index+1][:, index]
                         subPeak[4] = massInside
+                        subPeak[3] = r_effective
                         
                         new_peaks.append(subPeak)  
 

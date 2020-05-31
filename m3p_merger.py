@@ -86,7 +86,10 @@ def FindDeltaSpectrum(Peaks, DensityFile, ppFile):
             print("ERROR: Delta less than zero!")
     return roots, thresh(np.asarray(roots))
 
-def MakePeakList(ppFile, startIndex = 0, printOutput = False):
+def MakePeakList(ppFile, startIndex = 0, printOutput = False, massType = "normal"):
+    
+    assert massType in ["normal", "unstripped"], "MakePeakList(): invalid massType."
+    
     # Makes a list of peaks to be used by the sub peak finder
     p = ParamsFile("inputs/" + ppFile)
     
@@ -108,60 +111,14 @@ def MakePeakList(ppFile, startIndex = 0, printOutput = False):
             print("\tLoading file ({} of {}): {}".format(redshift_index+1, len(redshifts), fname), end = '\r')
         f = HaloReader(fname)
         
-        All_Peaks[redshift_index] = np.vstack((f.x, f.y, f.z, f.radius, f.mass))
-        
+        if massType == "normal":
+            All_Peaks[redshift_index] = np.vstack((f.x, f.y, f.z, f.radius, f.mass))
+        elif massType == "unstriped":
+            All_Peaks[redshift_index] = np.vstack((f.x, f.y, f.z, f.radius, f.unstriped_mass))
     if printOutput == True:
         print()    
     
     return All_Peaks, boxsize
-
-
-# def FindAllSubHalos(ppInputsFile, printOutput = False):
-#     All_Peaks, boxsize = MakePeakList(ppInputsFile, printOutput = printOutput)
-#     num_redshifts = len(All_Peaks)
-    
-#     if printOutput == True:
-#         print("All_Peaks has shape {}".format(All_Peaks.shape))
-#         print("First redshift has shape {}".format((All_Peaks[0][0:3].T).shape))
-    
-#     # Find index for earliest redshift containing peaks
-#     finalIndex = num_redshifts
-#     for i in range(num_redshifts):
-#         if (All_Peaks[i][0:3]).shape[1] == 0:
-#             finalIndex = i-1
-#             break
-#     print("Final index = {}".format(finalIndex))      
-    
-#     trees = [cKDTree(All_Peaks[i][0:3].T, boxsize = boxsize) for i in range(finalIndex)]
-    
-#     final_peaks = All_Peaks[-1]
-
-#     for redshift_index in range(finalIndex-1):
-        
-#         # Find nearest neighbor for every peak at this redshift
-#         query = trees[redshift_index+1].query(All_Peaks[redshift_index][0:3, :].T, k=1, eps=0)
-#         dists = query[0]
-#         # take radii of every peak at this redshift
-#         radii = All_Peaks[redshift_index][3,:]
-        
-#         # If at the previous redshift, there are no peaks within the radius of the peak at this redshift,
-#         # then this is the first instance of that peak.
-#         NewPeaks = All_Peaks[redshift_index].T[dists>radii].T
-        
-#         if printOutput == True:
-#             print("zi = {}: {} new peaks.".format(redshift_index,len(NewPeaks[0,:])))
-            
-#         # Add theses peaks to the store
-#         final_peaks = np.concatenate((final_peaks,NewPeaks),axis=1)
-#     if printOutput == True:
-#         print(final_peaks.shape, All_Peaks[-1].shape)
-        
-#     # Any final peaks at the earliest redshift must also be added
-#     if finalIndex != 0:
-#         final_peaks = np.concatenate((final_peaks, All_Peaks[-1]),axis=1)
-    
-#     return final_peaks
-
 
 
 def FindAllSubHalos(ppInputsFile, printOutput = False,redshift_indicies = 'all'):
@@ -201,45 +158,6 @@ def FindAllSubHalos(ppInputsFile, printOutput = False,redshift_indicies = 'all')
         print(final_peaks.shape, All_Peaks[-1].shape)
       
     return final_peaks
-
-# def BuildMergerTree(peak_list, pp_file, final_halo_index, redshift_indicies='all'):
-#     p = ParamsFile(pp_file)
-#     boxsize = p["boxsize"]  
-    
-#     # if no redshifts chosen, use all of them
-#     if redshift_indicies=='all':
-#         redshift_indicies = np.arange(len(p["redshifts"]))
-    
-#     # build KD trees
-#     trees = [cKDTree(peak_list[i][0:3].T, boxsize = boxsize) for i in range(len(redshift_indicies))]
-    
-#     peaks = np.zeros(len(redshift_indicies), dtype=object)
-    
-#     peaks[0] = np.vstack(np.asarray(peak_list[0][:, final_halo_index])).T
-    
-#     final_radius = peak_list[0][3,final_halo_index]
-#     total_peaks = 0
-#     for redshift_index in redshift_indicies[:-1]:
-        
-#         # Check peaks at next (earlier) redshift to see if any are contained within the final radius
-#         query = trees[redshift_index+1].query(peak_list[0][0:3, final_halo_index], k=200, eps=0)
-        
-#         dists = query[0]
-#         if len(dists[dists<final_radius]) == 100:
-#             print("Error: Reached peak count limit")
-#         #total_peaks += len(dists)
-#         #print(total_peaks)
-#         new_peaks = np.zeros(len(query[1][dists<final_radius]), dtype = object)
-#         for i, index in enumerate(query[1][dists<final_radius]):
-#             new_peaks[i] = peak_list[redshift_index+1][:, index]
-#         #print(len(new_peaks))
-#         if len(new_peaks) == 1:
-#             peaks[redshift_index+1] = np.vstack(np.asarray(new_peaks))
-#         elif new_peaks.size>0:
-#             peaks[redshift_index+1] = np.vstack(np.asarray(new_peaks))
-#         else:
-#             peaks[redshift_index+1] = np.asarray([])
-#     return peaks
 
 def BuildMergerTree(peak_list, pp_file, redshift_indicies='all', final_halos_indicies = 'all', printOutput = False):
     '''
@@ -386,7 +304,6 @@ def BuildMergerTree2(peak_list, pp_file, redshift_indicies='all', final_halos_in
     if final_halos_indicies == 'all':
         final_halos_indicies = np.arange(len(peak_list[0].T))
     # if only single final halo chosen, turn it into an array so that the code works
-    
     elif type(final_halos_indicies) == int:
         final_halos_indicies = np.array([final_halos_indicies])
         
@@ -429,8 +346,9 @@ def BuildMergerTree2(peak_list, pp_file, redshift_indicies='all', final_halos_in
                         assert volumeOverlap >= 0, "Volume must be positive"
                         
                         # Calculate effective mass and density
-                        # TODO: Don't hard code this density
-                        massInside = volumeOverlap*8.66e+10 # Density from m3p
+                        subPeakMass = peak_list[redshift_index+1][4, index]
+                        subPeakVolume = 4/3*np.pi*subPeakRadius**3
+                        massInside = volumeOverlap/subPeakVolume*subPeakMass 
                         r_effective = (3*volumeOverlap/(4*np.pi))**(1/3)
                         
                         # Store sub-halo with this new mass and effective radius
@@ -462,14 +380,13 @@ dists = {}
                 # print progress
                 print("\tHalo {} of {}: {} complete of {}".format(hi,len(final_halos_indicies), 
                                                                   ri+1, len(redshift_indicies[:-1])), end = '\r')
+        # Store merger tree
         merger_trees[hi] = peaks
     if printOutput == True:
         # print new line
         print()
-        # Store merger tree
         
     return merger_trees
-
 
 def MoveOutOfBounds(merger_list, boxsize, printOutput=False):
     if printOutput == True:
@@ -641,28 +558,7 @@ def FindCollapseRedshift(merger_tree, thresh_frac, pp_file,
             print(max(ProgMass), FinalMass/2)
         CollapseRedshift = max(redshifts[ProgMass>=FinalMass/2])
     elif interp == "Linear":
-        # Linear interpolation:
-        
-        # Find index of redshift before requirement met
-        n = np.where(redshifts == max(redshifts[ProgMass>=FinalMass/2]))[0][0]
-
-        #print(np.where(redshifts == max(redshifts[ProgMass<=FinalMass/2])))
-        del_M = ProgMass[n-1] - ProgMass[n]
-        del_z = redshifts[n] - redshifts[n-1]
-        CollapseRedshift = redshifts[n] - (FinalMass/2 - ProgMass[n])*(del_z/del_M)
-        if printOutput == True:
-            print("n = ", n)
-            print("log10(ProgMasses):")
-            print(np.log10(ProgMass))
-            print("log10(redshifts):")
-            print(np.log10(redshifts))
-            print("del_M = ", del_M)
-            print("del_z = ", del_z)
-            print("z_n = {:.3}, z_n+1 = {:.3}".format(redshifts[n],redshifts[n-1]))
-            print("z_col = {:.3}".format(CollapseRedshift))
-#         print(redshifts[n], ProgMass[n], del_M/del_z)             
-        # Linear interpolation equation:
-        #       z_col = z_n + (M_1/2 - M_n)*(dz/dM)
-        
+        print("Error: Linear iterpolation not implemented yet")
+        return 0
                      
     return CollapseRedshift, ProgMass, redshifts

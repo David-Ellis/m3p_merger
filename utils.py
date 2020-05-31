@@ -21,7 +21,7 @@ class HaloReader(object):
                 self.dispz = f["dispz"][:]
 
                 self.mass = f["mass"][:]
-                self.unstriped_mass = f["mass_before_stripping"][:]
+                self.unstripped_mass = f["mass_before_stripping"][:]
                 self.radius = f["radius"][:]
                 self.detected_at = f["detected_at"][:]
                 #read header information

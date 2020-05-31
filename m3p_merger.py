@@ -113,8 +113,8 @@ def MakePeakList(ppFile, startIndex = 0, printOutput = False, massType = "normal
         
         if massType == "normal":
             All_Peaks[redshift_index] = np.vstack((f.x, f.y, f.z, f.radius, f.mass))
-        elif massType == "unstriped":
-            All_Peaks[redshift_index] = np.vstack((f.x, f.y, f.z, f.radius, f.unstriped_mass))
+        elif massType == "unstripped":
+            All_Peaks[redshift_index] = np.vstack((f.x, f.y, f.z, f.radius, f.unstripped_mass))
     if printOutput == True:
         print()    
     
@@ -273,8 +273,33 @@ def volInt(r1, r2, d):
     
     return Vol
     
+def midPoint(coord1, coord2, radius1, radius2):
+    if coord1 > coord2:
+        midpoint = 0.5*(coord1+coord2+radius2-radius1)
+    if coord1 < coord2:
+        midpoint = 0.5*(coord1+coord2+radius1-radius2)
+    elif coord1 == coord1:
+        midpoint = coord1
+        
+    return midpoint
+    
+def intMid(peak1, peak2):
+    '''
+    Calculate the coordinates of the center of the intersection
+    between two spheres with coordinates (x1, y1, z1) and (x2, y2, z2)
+    and radii r1 and r2 respectively.
+    '''
+    x1, y1, z1, r1, M1 = peak1
+    x2, y2, z2, r2, M2 = peak2
+    
+    xc = midPoint(x1, x2, r1, r2)
+    yc = midPoint(y1, y2, r1, r2)
+    zc = midPoint(z1, z2, r1, r2)
+    
+    return xc, yc, zc
 
-def BuildMergerTree2(peak_list, pp_file, redshift_indicies='all', final_halos_indicies = 'all', printOutput = False):
+def BuildMergerTree2(peak_list, pp_file, redshift_indicies='all', final_halos_indicies = 'all', 
+                     effectiveCoords = False, printOutput = False):
     '''
     Builds lists of progenitor peaks for one (or multiple) final peak(s).
        Progenitors are defined to be all peaks contained within the comoving radius of the product (final) halo.
@@ -350,11 +375,17 @@ def BuildMergerTree2(peak_list, pp_file, redshift_indicies='all', final_halos_in
                         subPeakVolume = 4/3*np.pi*subPeakRadius**3
                         massInside = volumeOverlap/subPeakVolume*subPeakMass 
                         r_effective = (3*volumeOverlap/(4*np.pi))**(1/3)
-                        
+                       
                         # Store sub-halo with this new mass and effective radius
                         subPeak = peak_list[redshift_index+1][:, index]
                         subPeak[4] = massInside
                         subPeak[3] = r_effective
+                        
+                        if effectiveCoords == True:
+                            # Calculate center of overlap
+                            xc, yc, zc = intMid(peak_list[0][:,final_halo_index],
+                                               peak_list[redshift_index+1][:, index])
+                            subPeak[0:3] = xc, yc, zc
                         
                         new_peaks.append(subPeak)  
 
@@ -461,7 +492,7 @@ def plotMergerTree(merger_list, pp_file,startIndex=0, printOutput = False,
             if i<len(merger_list)-1 and merger_list[i+1].size>0:
                 #print(merger_list[i+1][:,0:3],"\n", merger_list[i+1][:,3])
                 dists = np.sqrt(np.sum((merger_list[i][j,0:3]-merger_list[i+1][:,0:3])**2,axis=1))
-                inside_mask = dists<merger_list[i][j,3]+2*merger_list[i+1][:,3]/3
+                inside_mask = dists<merger_list[i][j,3]#+merger_list[i+1][:,3]/3
                 for index in np.where(inside_mask)[0]:
                     plt.plot([redshifts[i],redshifts[i+1]], [j-merger_list[i].shape[0]/2,index-merger_list[i+1].shape[0]/2], 'k--')
                     #print(index, )

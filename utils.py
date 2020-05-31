@@ -11,7 +11,7 @@ class HaloReader(object):
         if fname is None and from_parent is None:
             raise NameError("You need to provide either a file name or a parent object")
         if fname is not None:
-            with h5py.File(fname) as f:
+            with h5py.File(fname, mode = "r") as f:
                 self.x = f["x"][:]
                 self.y = f["y"][:]
                 self.z = f["z"][:]
@@ -21,6 +21,7 @@ class HaloReader(object):
                 self.dispz = f["dispz"][:]
 
                 self.mass = f["mass"][:]
+                self.unstriped_mass = f["mass_before_stripping"][:]
                 self.radius = f["radius"][:]
                 self.detected_at = f["detected_at"][:]
                 #read header information

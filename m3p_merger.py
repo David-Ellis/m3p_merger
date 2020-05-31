@@ -352,19 +352,23 @@ def BuildMergerTree2(peak_list, pp_file, redshift_indicies='all', final_halos_in
                 peak_count = 10
                 query = trees[redshift_index+1].query(peak_list[0][0:3,final_halo_index], k=peak_count, eps=0)
                 dists = query[0]
-    
+                subPeakRadii = peak_list[redshift_index+1][3, :][query[1]]
+                
                 # Keep finding more peaks until some are further away than final_radius + max_radius
                 while len(dists[dists < final_radius + max_radius]) == peak_count:
                     peak_count = peak_count+100
                     query = trees[redshift_index+1].query(peak_list[0][0:3,final_halo_index], k=peak_count, eps=0)
                     dists = query[0]
-
+                    subPeakRadii = peak_list[redshift_index+1][3, :][query[1]]
                 
-                for i, index in enumerate(query[1][dists < final_radius + max_radius]):
+                #print("initial query[1]:", query[1], ". Total num:", len(query[1]))
+                #print("initial dists:", dists)
+                #print("initial radii:", subPeakRadii)
+                for i, index in enumerate(query[1][dists < final_radius + subPeakRadii]):
                     # Check if any overlap
                     subPeakRadius = peak_list[redshift_index+1][3, index]
-                    
-                    if dists[i]<final_radius+subPeakRadius:
+                   
+                    if dists[i] < final_radius+subPeakRadius:
                         
                         # Calculate volume of overlap and the mass of the sub-halo in that region 
                         volumeOverlap = volInt(final_radius, subPeakRadius, dists[i])
@@ -375,9 +379,9 @@ def BuildMergerTree2(peak_list, pp_file, redshift_indicies='all', final_halos_in
                         subPeakVolume = 4/3*np.pi*subPeakRadius**3
                         massInside = volumeOverlap/subPeakVolume*subPeakMass 
                         r_effective = (3*volumeOverlap/(4*np.pi))**(1/3)
-                       
+                        #print("r_eff: {:.3}".format(r_effective))
                         # Store sub-halo with this new mass and effective radius
-                        subPeak = peak_list[redshift_index+1][:, index]
+                        subPeak = peak_list[redshift_index+1][:, index].copy()
                         subPeak[4] = massInside
                         subPeak[3] = r_effective
                         
@@ -387,19 +391,10 @@ def BuildMergerTree2(peak_list, pp_file, redshift_indicies='all', final_halos_in
                                                peak_list[redshift_index+1][:, index])
                             subPeak[0:3] = xc, yc, zc
                         
+                        #print("new peak index: {} with radius {:.3}".format(index, subPeakRadius))
+                        #print("at a distance {:.3}".format(dists[i]))
                         new_peaks.append(subPeak)  
 
-                # Check all the new peaks are within 2* final halo radius
-                if len(new_peaks)>0:
-                    query = trees[redshift_index+1].query(peak_list[0][0:3,final_halo_index], k=len(new_peaks), eps=0)
-                    dists = np.array(query[0])
-                    insideFinal = len(dists[dists<2*final_radius])
-                    assert insideFinal == len(new_peaks), '''
-{} peaks found but only {} are within 2* final halo radius
-final_radius = {}
-dists = {}
-'''.format(len(new_peaks),insideFinal,final_radius, dists)
-                        
             new_peaks = np.asarray(new_peaks)
             if len(new_peaks) == 1:
                 peaks[redshift_index+1] = np.vstack(np.asarray(new_peaks))

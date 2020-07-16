@@ -321,7 +321,7 @@ def BuildMergerTree2(peak_list, pp_file, redshift_indicies='all', final_halos_in
         redshift_indicies = np.arange(len(peak_list))[sizes>0]
         
     if printOutput == True:
-        print("\tFinal redshift index {} out of {}".format(max(redshift_indicies), len(peak_list)))
+        print("\tFinal redshift index {} out of {}".format(max(redshift_indicies), len(peak_list)-1))
         print("\ti.e. Earlist halo at z = {}".format(p["redshifts"][max(redshift_indicies)]))
         
     trees = [cKDTree(peak_list[i][0:3].T, boxsize = boxsize) for i in redshift_indicies]
@@ -346,25 +346,37 @@ def BuildMergerTree2(peak_list, pp_file, redshift_indicies='all', final_halos_in
         peaks[0] = np.vstack(np.asarray(peak_list[0][:, final_halo_index])).T
         
         for ri, redshift_index in enumerate(redshift_indicies[:-1]):
+            #print("Redshift index: {} ".format(ri), end = "   ")
+            #print("# peaks at this z: {}".format(len(peak_list[redshift_index+1][0,:])))
+            
             new_peaks = []
             
             if peaks[redshift_index].size>0:
                 peak_count = 10
                 query = trees[redshift_index+1].query(peak_list[0][0:3,final_halo_index], k=peak_count, eps=0)
-                dists = query[0]
-                subPeakRadii = peak_list[redshift_index+1][3, :][query[1]]
+                
+                # maxIndex prevents double counting and taking more peaks than what exist
+                maxIndex = min(len(query[0]), len(peak_list[redshift_index+1][0,:]))
+                #print("maxIndex =", maxIndex)
+                dists = query[0][:maxIndex]
+                
+                subPeakRadii = peak_list[redshift_index+1][3, :][query[1][:maxIndex]].copy()
                 
                 # Keep finding more peaks until some are further away than final_radius + max_radius
                 while len(dists[dists < final_radius + max_radius]) == peak_count:
                     peak_count = peak_count+100
                     query = trees[redshift_index+1].query(peak_list[0][0:3,final_halo_index], k=peak_count, eps=0)
-                    dists = query[0]
-                    subPeakRadii = peak_list[redshift_index+1][3, :][query[1]]
+                    
+                    maxIndex = min(len(query[0]), len(peak_list[redshift_index+1][0,:]))
+                    #print("maxIndex =", maxIndex)
+                    dists = query[0][:][:maxIndex]
+                    #print("len(peak_list):", len(peak_list[redshift_index+1][0, :][query[1]]), "len(query[1]):", len(query[1]))
+                    subPeakRadii = peak_list[redshift_index+1][3, :][query[1][:maxIndex]].copy()
                 
                 #print("initial query[1]:", query[1], ". Total num:", len(query[1]))
                 #print("initial dists:", dists)
                 #print("initial radii:", subPeakRadii)
-                for i, index in enumerate(query[1][dists < final_radius + subPeakRadii]):
+                for i, index in enumerate(query[1][:maxIndex][dists < final_radius + subPeakRadii]):
                     # Check if any overlap
                     subPeakRadius = peak_list[redshift_index+1][3, index]
                    
@@ -403,9 +415,10 @@ def BuildMergerTree2(peak_list, pp_file, redshift_indicies='all', final_halos_in
             else:
                 peaks[redshift_index+1] = np.asarray([])
             if printOutput == True:
+                pass
                 # print progress
                 print("\tHalo {} of {}: {} complete of {}".format(hi,len(final_halos_indicies), 
-                                                                  ri+1, len(redshift_indicies[:-1])), end = '\r')
+                                        ri+1, len(redshift_indicies[:-1])), end = '\r')
         # Store merger tree
         merger_trees[hi] = peaks
     if printOutput == True:

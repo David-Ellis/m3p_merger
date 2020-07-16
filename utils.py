@@ -21,7 +21,12 @@ class HaloReader(object):
                 self.dispz = f["dispz"][:]
 
                 self.mass = f["mass"][:]
-                self.unstripped_mass = f["mass_before_stripping"][:]
+                
+                try:
+                    self.unstripped_mass = f["mass_before_stripping"][:]
+                except:
+                    print("No unstripped mass data found.")
+                    
                 self.radius = f["radius"][:]
                 self.detected_at = f["detected_at"][:]
                 #read header information

@@ -209,7 +209,7 @@ def PS_HMF(P0, k, z=0, mode = 'PS', printOutput = False):
     # Evolved powerSpec
     #P0 = P0*(GrowthFactor(z)/GrowthFactor(0))**2
     #pspec_evo = PowerSpec(k, P0)
-    k2 = np.logspace(np.log10(pspec.klow)-3, np.log10(pspec.khigh)+3, int(1e4))
+    k2 = np.logspace(np.log10(pspec.klow)-5, np.log10(pspec.khigh)+3, int(1e5))
                      
     R = np.logspace(np.log10(2*np.pi/max(k2)), np.log10(2*np.pi/min(k2)), 200) # h^(-1) Mpc
     if printOutput == True:

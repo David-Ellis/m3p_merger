@@ -138,18 +138,18 @@ def GrowthFactor(z):
     x = a/a_eq
     return 1+2/3*x
 
-def thresh(z):
-    return 1.686*GrowthFactor(z)/(GrowthFactor(z)-1)
+def thresh(z, A = 1.686):
+    return A*GrowthFactor(z)/(GrowthFactor(z)-1)
 
-def fit_PS(sigma, z):
+def fit_PS(sigma, z, A = 1.686):
     # Press-Schechter fit
-    v = thresh(z)/sigma
+    v = thresh(z, A)/sigma
     return np.sqrt(2/np.pi)*v*np.exp(-v**2/2)
 
-def fit_ST(sigma, z):
+def fit_ST(sigma, z, A = 1.686):
     # Sheth-Tormen fit
     A = 0.3222; a = 0.707; p=0.3
-    v = thresh(z)/sigma
+    v = thresh(z, A)/sigma
     return A*np.sqrt(3*a/np.pi)*(1+(1/(a*v**2))**p)*v*np.exp(-v**2*a/2)
 
 def fit_TK(sigma, z):
@@ -186,7 +186,7 @@ def mass_variance(pspec, k, R, z, filter_mode = 'tophat', printOutput = False):
         
     return sigma, M
         
-def PS_HMF(P0, k, z=0, mode = 'PS', printOutput = False):
+def PS_HMF(P0, k, z=0, mode = 'PS', printOutput = False, A = 1.686):
     '''
     Takes power spectrum linearly evolved to z=0 and returns the HMF as predicted by 
     Press-Schechter
@@ -199,6 +199,7 @@ def PS_HMF(P0, k, z=0, mode = 'PS', printOutput = False):
                 > PS: Press-Schechter
                 > ST: Sheth-Tormen
                 > TK: Tinker-Kravtov
+        A - fitting parameter for threshold overdensity
     '''
     if printOutput == True:
         print("Running PS calc for z = {}".format(z))
@@ -209,7 +210,7 @@ def PS_HMF(P0, k, z=0, mode = 'PS', printOutput = False):
     # Evolved powerSpec
     #P0 = P0*(GrowthFactor(z)/GrowthFactor(0))**2
     #pspec_evo = PowerSpec(k, P0)
-    k2 = np.logspace(np.log10(pspec.klow)-5, np.log10(pspec.khigh)+3, int(1e5))
+    k2 = np.logspace(np.log10(pspec.klow), np.log10(pspec.khigh)+3, int(1e5))
                      
     R = np.logspace(np.log10(2*np.pi/max(k2)), np.log10(2*np.pi/min(k2)), 200) # h^(-1) Mpc
     if printOutput == True:
@@ -221,9 +222,9 @@ def PS_HMF(P0, k, z=0, mode = 'PS', printOutput = False):
     sigma = sigma0*(GrowthFactor(z)/GrowthFactor(0))
     
     if mode == "PS":
-        f = fit_PS(sigma, z)
+        f = fit_PS(sigma, z, A)
     elif mode == "ST":
-        f = fit_ST(sigma, z)
+        f = fit_ST(sigma, z, A)
     elif mode == "TK":
         f = fit_TK(sigma, z)
     else:
@@ -235,7 +236,7 @@ def PS_HMF(P0, k, z=0, mode = 'PS', printOutput = False):
     dsig_dM = abs(np.gradient(np.log10(sigma), np.log10(M)))
     
     # Calculate HMF
-    HMF = rho_bg*f*(thresh(z)/sigma)/M*dsig_dM
+    HMF = rho_bg*f*(thresh(z, A)/sigma)/M*dsig_dM
     
     return HMF, M, f, sigma, [pspec, k2]
 

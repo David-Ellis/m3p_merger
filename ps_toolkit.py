@@ -66,11 +66,11 @@ def solve_PS_Prob(z, M, z0, siglog, f, printOutput = False):
     """
     return 0.5 - PS_Prob(z, M, z0, siglog, f)
 
-def Find_zcol(Pdata, kdata, masses, z0, f = 0.01, printOutput = False):
+def Find_zcol(Pdata, kdata, masses, z0, f = 0.01, printOutput = False, krange = None):
     unconverged = 0
     z_col = np.zeros(len(masses))
     
-    HMF_PS, M2, f_PS, sigma0, slinedata = PS_HMF(Pdata, kdata, z=0)
+    HMF_PS, M2, f_PS, sigma0, slinedata = PS_HMF(Pdata, kdata, z=0, krange = krange)
     
     sig = interp1d(M2, sigma0)
     
@@ -186,7 +186,7 @@ def mass_variance(pspec, k, R, z, filter_mode = 'tophat', printOutput = False):
         
     return sigma, M
         
-def PS_HMF(P0, k, z=0, mode = 'PS', printOutput = False, A = 1.686):
+def PS_HMF(P0, k, z=0, mode = 'PS', printOutput = False, A = 1.686, krange = None):
     '''
     Takes power spectrum linearly evolved to z=0 and returns the HMF as predicted by 
     Press-Schechter
@@ -210,7 +210,10 @@ def PS_HMF(P0, k, z=0, mode = 'PS', printOutput = False, A = 1.686):
     # Evolved powerSpec
     #P0 = P0*(GrowthFactor(z)/GrowthFactor(0))**2
     #pspec_evo = PowerSpec(k, P0)
-    k2 = np.logspace(np.log10(pspec.klow), np.log10(pspec.khigh)+3, int(1e5))
+    if krange == None:
+        k2 = np.logspace(np.log10(pspec.klow), np.log10(pspec.khigh), int(1e5))
+    else:
+        k2 = np.logspace(np.log10(min(krange)), np.log10(max(krange)), int(1e5))
                      
     R = np.logspace(np.log10(2*np.pi/max(k2)), np.log10(2*np.pi/min(k2)), 200) # h^(-1) Mpc
     if printOutput == True:

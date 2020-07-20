@@ -138,18 +138,18 @@ def GrowthFactor(z):
     x = a/a_eq
     return 1+2/3*x
 
-def thresh(z, A = 1.686):
-    return A*GrowthFactor(z)/(GrowthFactor(z)-1)
+def thresh(z, epsilon = 1.686):
+    return epsilon*GrowthFactor(z)/(GrowthFactor(z)-1)
 
-def fit_PS(sigma, z, A = 1.686):
+def fit_PS(sigma, z, epsilon = 1.686):
     # Press-Schechter fit
-    v = thresh(z, A)/sigma
+    v = thresh(z, epsilon)/sigma
     return np.sqrt(2/np.pi)*v*np.exp(-v**2/2)
 
-def fit_ST(sigma, z, A = 1.686):
+def fit_ST(sigma, z, epsilon = 1.686):
     # Sheth-Tormen fit
     A = 0.3222; a = 0.707; p=0.3
-    v = thresh(z, A)/sigma
+    v = thresh(z, epsilon)/sigma
     return A*np.sqrt(3*a/np.pi)*(1+(1/(a*v**2))**p)*v*np.exp(-v**2*a/2)
 
 def fit_TK(sigma, z):
@@ -186,7 +186,7 @@ def mass_variance(pspec, k, R, z, filter_mode = 'tophat', printOutput = False):
         
     return sigma, M
         
-def PS_HMF(P0, k, z=0, mode = 'PS', printOutput = False, A = 1.686, krange = None):
+def PS_HMF(P0, k, z=0, mode = 'PS', printOutput = False, epsilon = 1.686, krange = None):
     '''
     Takes power spectrum linearly evolved to z=0 and returns the HMF as predicted by 
     Press-Schechter
@@ -225,9 +225,9 @@ def PS_HMF(P0, k, z=0, mode = 'PS', printOutput = False, A = 1.686, krange = Non
     sigma = sigma0*(GrowthFactor(z)/GrowthFactor(0))
     
     if mode == "PS":
-        f = fit_PS(sigma, z, A)
+        f = fit_PS(sigma, z, epsilon)
     elif mode == "ST":
-        f = fit_ST(sigma, z, A)
+        f = fit_ST(sigma, z, epsilon)
     elif mode == "TK":
         f = fit_TK(sigma, z)
     else:
@@ -239,7 +239,7 @@ def PS_HMF(P0, k, z=0, mode = 'PS', printOutput = False, A = 1.686, krange = Non
     dsig_dM = abs(np.gradient(np.log10(sigma), np.log10(M)))
     
     # Calculate HMF
-    HMF = rho_bg*f*(thresh(z, A)/sigma)/M*dsig_dM
+    HMF = rho_bg*f*(thresh(z, epsilon)/sigma)/M*dsig_dM
     
     return HMF, M, f, sigma, [pspec, k2]
 

@@ -4,6 +4,7 @@ from scipy.special import erfc, erfinv
 from scipy.optimize import root_scalar
 
 # TODO: Take cosmology as an input
+print("Loaded PS module.\n")
 
 # Cosmological parameters
 Omega_m0 = 0.3
@@ -28,7 +29,7 @@ a_eq = 1/(1+z_eq)
 rho_eq = Omega_m0*(a_eq)**3
 
 
-def PS_Prob(z, M, z0, sig, f = 0.01):
+def PS_Prob(z, M, z0, sig, f = 0.01, epsilon = 1.686):
     '''Calculate probability of halo projenitors at z having mass greater than f*M
     where M is the mass at the final redshift z0
     
@@ -48,12 +49,12 @@ def PS_Prob(z, M, z0, sig, f = 0.01):
     sig2 = sig(M)
     
     #test_thresh = 1.69*(z-z0)*(z0+1)
-    test_thresh = thresh(z)/(GrowthFactor(z)/GrowthFactor(0))-thresh(z0)/(GrowthFactor(z0)/GrowthFactor(0))
+    test_thresh = thresh(z, epsilon)/(GrowthFactor(z)/GrowthFactor(0))-thresh(z0, epsilon)/(GrowthFactor(z0)/GrowthFactor(0))
     prob = erfc(test_thresh/np.sqrt(2*(sig1**2 - sig2**2)))
     #prob = erf((thresh(z)-thresh(0))/np.sqrt(2*(sig1**2 - sig2**2)))
     return prob
 
-def solve_PS_Prob(z, M, z0, siglog, f, printOutput = False):
+def solve_PS_Prob(z, M, z0, siglog, f, epsilon = 1.686, printOutput = False):
     """ Equation to be solved in Find_zcol()
     
     Parameters
@@ -64,13 +65,13 @@ def solve_PS_Prob(z, M, z0, siglog, f, printOutput = False):
     siglog: interpolated function for the log of the mass variance 
     f (optional): fraction of total mass for progenitors (float)
     """
-    return 0.5 - PS_Prob(z, M, z0, siglog, f)
+    return 0.5 - PS_Prob(z, M, z0, siglog, f, epsilon = epsilon)
 
-def Find_zcol(Pdata, kdata, masses, z0, f = 0.01, printOutput = False, krange = None):
+def Find_zcol(Pdata, kdata, masses, z0, f = 0.01, printOutput = False, krange = None, epsilon = 1.686):
     unconverged = 0
     z_col = np.zeros(len(masses))
     
-    HMF_PS, M2, f_PS, sigma0, slinedata = PS_HMF(Pdata, kdata, z=0, krange = krange)
+    HMF_PS, M2, f_PS, sigma0, slinedata = PS_HMF(Pdata, kdata, z=0, krange = krange, epsilon = epsilon)
     
     sig = interp1d(M2, sigma0)
     
@@ -80,7 +81,7 @@ def Find_zcol(Pdata, kdata, masses, z0, f = 0.01, printOutput = False, krange = 
         print("min(HMF mass) = {} Msol".format(min(M2)))
     
     for i, M in enumerate(masses):
-        sol = root_scalar(solve_PS_Prob, args = (M, z0, sig, f), bracket=(1e7, z0))
+        sol = root_scalar(solve_PS_Prob, args = (M, z0, sig, f, epsilon), bracket=(1e7, z0))
         if sol.converged == True:
             z_col[i] = sol.root
         else:
@@ -203,7 +204,7 @@ def PS_HMF(P0, k, z=0, mode = 'PS', printOutput = False, epsilon = 1.686, krange
     '''
     if printOutput == True:
         print("Running PS calc for z = {}".format(z))
-    
+        
     ##### Smooth the data using a spline####
     # Unevolved powerSpec
     pspec = PowerSpec(k, P0)
@@ -262,7 +263,7 @@ def solve_conc(scale_densitys):
             unconverged += 1
     return concs
     
-def pred_conc(mass, C, z0, zcol = [], pspec = None, mode = "NFW", f = 0.01):
+def pred_conc(mass, C, z0, zcol = [], pspec = None, mode = "NFW", f = 0.01,krange = None, epsilon = 1.686):
     assert (mode == "NFW") or (mode == "Bullock"), "Error: mode not recognised."
     
     if zcol == []:
@@ -272,7 +273,7 @@ def pred_conc(mass, C, z0, zcol = [], pspec = None, mode = "NFW", f = 0.01):
         Pdata, kdata = pspec
         
         # Estimate zcol from PS
-        zcol = Find_zcol(Pdata, kdata, mass, z0, f)
+        zcol = Find_zcol(Pdata, kdata, mass, z0, f, epsilon = epsilon, krange = krange)
     xcol = (z_eq+1)/(zcol+1); x0 = (z_eq+1)/(z0+1)
     
     if mode == "NFW":

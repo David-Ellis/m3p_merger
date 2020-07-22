@@ -1,6 +1,7 @@
 import sys
 import os
 import numpy as np
+import m3p_merger
 
 args = sys.argv
 

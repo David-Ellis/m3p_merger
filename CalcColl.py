@@ -1,5 +1,4 @@
-import sys
-import os
+import sys, os, m3p_merger
 import numpy as np
 import m3p_merger
 

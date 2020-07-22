@@ -1,6 +1,5 @@
 import sys, os, m3p_merger
 import numpy as np
-import m3p_merger
 
 args = sys.argv
 
@@ -10,7 +9,7 @@ ppFile = args[1]
 saveName = args[2]
 
 z0 = 99.0
-   
+frac = 0.01   
 print("-"*80)
 print("Calculating collapse redshifts\n   ppFile: {}\n   Save name = {}\n".format(ppFile, saveName))
     

@@ -1,5 +1,4 @@
-import sys
-import os
+import sys, os, m3p_merger
 import numpy as np
 
 args = sys.argv

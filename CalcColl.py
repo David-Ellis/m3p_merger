@@ -9,7 +9,7 @@ ppFile = args[1]
 saveName = args[2]
 
 z0 = 99.0
-   
+frac = 0.01   
 print("-"*80)
 print("Calculating collapse redshifts\n   ppFile: {}\n   Save name = {}\n".format(ppFile, saveName))
     

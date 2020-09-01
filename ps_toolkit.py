@@ -21,7 +21,7 @@ Omega_DM = 0.267
 # rho_c = 3/(8*np.pi*G)*Mpc**3/Msol*H**2 # Msol / Mpc^(-3)
 # rho_bg = 0.267*rho_c
 
-rho_bg = 8.66e+10 # FROM PEAK PATCH
+rho_bg = 85342512877.42429 #8.66e+10 # FROM PEAK PATCH
 
 z_eq = Omega_m0/Omega_r0 - 1
 a_eq = 1/(1+z_eq)
@@ -133,6 +133,7 @@ class PowerSpec:
         output[large_k_mask] = 10**(self.power_slope*np.log10(k[large_k_mask]) + self.power_height)
         
         return output
+    
 
 def GrowthFactor(z):
     a = 1/(z+1)
@@ -151,21 +152,31 @@ def fit_ST(sigma, z, epsilon = 1.686):
     # Sheth-Tormen fit
     A = 0.3222; a = 0.707; p=0.3
     v = thresh(z, epsilon)/sigma
-    return A*np.sqrt(3*a/np.pi)*(1+(1/(a*v**2))**p)*v*np.exp(-v**2*a/2)
+    return A*np.sqrt(2*a/np.pi)*(1+(1/(a*v**2))**p)*v*np.exp(-v**2*a/2)
 
 def fit_TK(sigma, z):
+    
+    A0 = 1.858659e-01
+    a0 = 1.466904
+    b0 = 2.571104
+    c0 = 1.193958
+    A_exp = 0.14
+    a_exp = 0.06
+    
     #Tinker and Kravtsov
-    A = 0.186*(1+z)**(-0.14)
-    a = 1.47*(1+z)*(0.06)
+    A = A0 * (1 + z) ** (-A_exp)
+    a = a0 * (1 + z) * (-a_exp)
     
-    Omega_m = Omega_m0*(1+z)**3/(Omega_m0*(1+z**3) + Omega_r0*(1+z)**4 + 0.6911) 
-    x = Omega_m - 1
-    del_vir = 18*np.pi**2 + 82*x - 39*x**2
+    #Omega_m = Omega_m0*(1+z)**3/(Omega_m0*(1+z**3) + Omega_r0*(1+z)**4 + 0.6911) 
+    #x = Omega_m - 1
+    del_vir = 200 #18*np.pi**2 + 82*x - 39*x**2
     
-    alpha = np.exp(-(0.75/np.log(del_vir/75))**1.2)
-    b = 2.57*(1+z)**(-alpha)
-    c = 1.19
-    return A*((b/sigma)**a+1)*np.exp(-c/sigma**2)
+    alpha = 10 ** ( - ((0.75/np.log10(del_vir / 75.0))**1.2))
+    
+    b = b0*(1+z)**(-alpha)
+    c = c0
+    
+    return A*((b / sigma) ** a + 1) * np.exp(- c / sigma**2)
 
 
 def mass_variance(pspec, k, R, z, filter_mode = 'tophat', printOutput = False):
@@ -173,7 +184,7 @@ def mass_variance(pspec, k, R, z, filter_mode = 'tophat', printOutput = False):
     Calculates mass varience from the given power spectrum and returns with the mass 
     scale in units M_sol h^3
     '''
-
+    
     M = rho_bg*4/3*np.pi*R**3 # Msol h^3 
     if printOutput == True:
         print("mass_variance: max(P) = {:.3}".format(max(pspec.val(k))))
@@ -186,7 +197,34 @@ def mass_variance(pspec, k, R, z, filter_mode = 'tophat', printOutput = False):
         print("ERROR: Unexpected filter mode.")
         
     return sigma, M
-        
+
+#############################################################################
+def H(a, cosmology):
+    '''
+    normalised Hubble constant 
+    H(a)/H0
+    '''
+    omega_l, omega_m, omega_r = cosmology
+    return (omega_m*a**(-3) + omega_r*a**(-4) + omega_l)**(1/2)
+
+def D_plus(a):
+    '''
+    Testing hmf module growth function
+
+    '''
+    cosmology = [0.6911, 0.3089, 9.16e-5]
+    _, omega_m, _ = cosmology
+    Hubble = H(a, cosmology)
+    
+    
+    aprime = np.logspace(-7, np.log10(a), 1000)
+    integrand = 1/(aprime*H(aprime, cosmology))**3
+
+    integral = np.trapz(integrand, aprime)
+    
+    return 5/2*omega_m*Hubble*integral
+#############################################################################
+    
 def PS_HMF(P0, k, z=0, mode = 'PS', printOutput = False, epsilon = 1.686, krange = None):
     '''
     Takes power spectrum linearly evolved to z=0 and returns the HMF as predicted by 
@@ -200,17 +238,25 @@ def PS_HMF(P0, k, z=0, mode = 'PS', printOutput = False, epsilon = 1.686, krange
                 > PS: Press-Schechter
                 > ST: Sheth-Tormen
                 > TK: Tinker-Kravtov
-        A - fitting parameter for threshold overdensity
+        epsilon - fitting parameter for threshold overdensity
+                  default = 1.686
+        
+    returns:
+        HMF - Halo mass functionin dn/dlog10(M) Mpc^-3
+        M - Halo masses in Msol
+        f - fitting function
+        sigma - Mass spectrum
+        [pspec, k] - The interpolated/extrapolated power function
     '''
     if printOutput == True:
         print("Running PS calc for z = {}".format(z))
         
-    ##### Smooth the data using a spline####
-    # Unevolved powerSpec
+    d = GrowthFactor(z)/GrowthFactor(0)
+    #d = D_plus(1/(1+z))/D_plus(1)
+        
+    # create power spectrum object to allow for extrapolation
     pspec = PowerSpec(k, P0)
-    # Evolved powerSpec
-    #P0 = P0*(GrowthFactor(z)/GrowthFactor(0))**2
-    #pspec_evo = PowerSpec(k, P0)
+    
     if krange == None:
         k2 = np.logspace(np.log10(pspec.klow), np.log10(pspec.khigh), int(1e5))
     else:
@@ -219,11 +265,12 @@ def PS_HMF(P0, k, z=0, mode = 'PS', printOutput = False, epsilon = 1.686, krange
     R = np.logspace(np.log10(2*np.pi/max(k2)), np.log10(2*np.pi/min(k2)), 200) # h^(-1) Mpc
     if printOutput == True:
         print("Min R = {}, max R = {}".format(min(R), max(R)))
+        
     sigma0, M = mass_variance(pspec, k2, R, z, filter_mode = 'tophat')
     if printOutput == True:
         print("max sig (unev) = {}".format(max(sigma0)))
-    # Move mass variance to desired redshift                 
-    sigma = sigma0*(GrowthFactor(z)/GrowthFactor(0))
+    
+    sigma = sigma0*d
     
     if mode == "PS":
         f = fit_PS(sigma, z, epsilon)
@@ -236,13 +283,13 @@ def PS_HMF(P0, k, z=0, mode = 'PS', printOutput = False, epsilon = 1.686, krange
         return 0
         
     # derivative of mass varience wrt to M
-    #plt.loglog(M, sigma)
-    dsig_dM = abs(np.gradient(np.log10(sigma), np.log10(M)))
+    dsig_dM = abs(np.gradient(np.log(sigma), np.log(M)))
     
     # Calculate HMF
-    HMF = rho_bg*f*(thresh(z, epsilon)/sigma)/M*dsig_dM
+    HMF = rho_bg * f / M * dsig_dM * np.log(10)#* (thresh(z, epsilon)/sigma)
     
-    return HMF, M, f, sigma, [pspec, k2]
+    
+    return HMF, M, f, sigma, [pspec.val(k2)*d**2, k2]
 
 def find_conc(c, delta):
     """Equation to be solved to find concentration parameter
@@ -300,7 +347,7 @@ def massfrac(pspec, redshifts, Mtot, mode = "PS"):
     HMFs = [PS_HMF(Pdata, kdata, z=z, mode = mode)[0] for z in redshifts]
     M = PS_HMF(Pdata, kdata, z=redshifts[0], mode = 'PS')[1]
     
-    fb = [np.trapz(HMFs[i]*M, np.log(M))/Mtot for i in range(len(redshifts))]
+    fb = [np.trapz(HMFs[i]*M, np.log10(M))/Mtot for i in range(len(redshifts))]
     
     return fb
 

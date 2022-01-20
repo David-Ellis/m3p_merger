@@ -1,9 +1,8 @@
-
 import numpy as np
 import matplotlib.pyplot as plt
-import h5py
-from scipy.ndimage import gaussian_filter
-from scipy.optimize import root_scalar
+#import h5py
+#from scipy.ndimage import gaussian_filter
+#from scipy.optimize import root_scalar
 from scipy.spatial import cKDTree
 import matplotlib.patches as mpatches
 import matplotlib
@@ -20,70 +19,71 @@ from utils import ParamsFile, HaloReader
 
 
 # Cosmological parameters
-z_eq = 3402
-a_eq = 1/(z_eq+1)
-rhoc = 2.78e-07*(1e6)**3 #Msol/cMpc^3
-rho_bg = 0.267*rhoc #DM mean density Msol/cMpc^3
+#z_eq = 3402
+#a_eq = 1/(z_eq+1)
+#rhoc = 2.78e-07*(1e6)**3 #Msol/cMpc^3
+#rho_bg = 0.267*rhoc #DM mean density Msol/cMpc^3
+
 path_prefix = r"C:\Users\David\AxionData/PeakPatch/m3p_merger/"
               
-def Find_z_col(z, delta_0):
-    #TODO:  Modify this to take redshift of the initial conditions
-    return delta_0/GrowthFactor(9e5)*(GrowthFactor(z)-1)-1.686
+# def Find_z_col(z, delta_0):
+#     #TODO:  Modify this to take redshift of the initial conditions
+#     return delta_0/GrowthFactor(9e5)*(GrowthFactor(z)-1)-1.686
 
-def thresh(z):
-    return 1.686*GrowthFactor(z)/(GrowthFactor(z)-1)
+# def thresh(z):
+#     return 1.686*GrowthFactor(z)/(GrowthFactor(z)-1)
 
-def GrowthFactor(z):
-    a = 1/(z+1)
-    x = a/a_eq
-    return 1+2/3*x
+# def GrowthFactor(z):
+#     a = 1/(z+1)
+#     x = a/a_eq
+#     return 1+2/3*x
 
-def FindDeltaSpectrum(Peaks, DensityFile, ppFile):
-    # Get boxsize from pp file
-    ppFile_path = path_prefix + "inputs/" + ppFile
-    #print(ppFile_path)
-    p = ParamsFile(ppFile_path)
-    boxsize = p["boxsize"]  
+# def FindDeltaSpectrum(Peaks, DensityFile, ppFile):
+#     # Get boxsize from pp file
+#     ppFile_path = path_prefix + "inputs/" + ppFile
+#     #print(ppFile_path)
+#     p = ParamsFile(ppFile_path)
+#     boxsize = p["boxsize"]  
     
-    # Load unevolved density field   
-    with h5py.File(DensityFile, 'r') as d:
-        density = d['energy/redensity'][:]
+#     # Load unevolved density field   
+#     with h5py.File(DensityFile, 'r') as d:
+#         density = d['energy/redensity'][:]
         
-    density = density.reshape(512,512,512)
+#     density = density.reshape(512,512,512)
 
-    # Smooth on ~ 2 pixal scale - Gaussian smoothing probably not best approach
-    overdensities = (density-density.mean())/density.mean()
-    overdensities =  gaussian_filter(overdensities, 2)
+#     # Smooth on ~ 2 pixal scale - Gaussian smoothing probably not best approach
+#     overdensities = (density-density.mean())/density.mean()
+#     overdensities =  gaussian_filter(overdensities, 2)
 
-    density = []
-    all_r = []
-    roots = []
-    # Find delta value in *linearly* evolved density field
+#     density = []
+#     all_r = []
+#     roots = []
+#     # Find delta value in *linearly* evolved density field
     
-    num_peaks = len(Peaks[0,:])
-    #print(num_peaks)
-    delta_unEv = np.zeros(num_peaks)
-    for i in range(num_peaks):
-        x_cell = int(512*Peaks[0][i]/boxsize)    
-        y_cell = int(512*Peaks[1][i]/boxsize) 
-        z_cell = int(512*Peaks[2][i]/boxsize) 
-        delta_unEv[i] = overdensities[x_cell, y_cell, z_cell]
+#     num_peaks = len(Peaks[0,:])
+#     #print(num_peaks)
+#     delta_unEv = np.zeros(num_peaks)
+#     for i in range(num_peaks):
+#         x_cell = int(512*Peaks[0][i]/boxsize)    
+#         y_cell = int(512*Peaks[1][i]/boxsize) 
+#         z_cell = int(512*Peaks[2][i]/boxsize) 
+#         delta_unEv[i] = overdensities[x_cell, y_cell, z_cell]
      
-    plt.hist(delta_unEv,bins=30,log=True)
-    print(len(delta_unEv[delta_unEv<0])/len(delta_unEv)*100,"% less than zero")
-    plt.show()
+#     plt.hist(delta_unEv,bins=30,log=True)
+#     print(len(delta_unEv[delta_unEv<0])/len(delta_unEv)*100,"% less than zero")
+#     plt.show()
 
-    for d in delta_unEv:
-        unconverged = 0
-        if d > 0:
-            sol = root_scalar(Find_z_col, args = d, bracket = (1, 9e5))
-            if sol.converged == True:
-                roots += [sol.root]
-            else:
-                unconverged += 1
-        else:
-            print("ERROR: Delta less than zero!")
-    return roots, thresh(np.asarray(roots))
+#     for d in delta_unEv:
+#         unconverged = 0
+#         if d > 0:
+#             sol = root_scalar(Find_z_col, args = d, bracket = (1, 9e5))
+#             if sol.converged == True:
+#                 roots += [sol.root]
+#             else:
+#                 unconverged += 1
+#         else:
+#             print("ERROR: Delta less than zero!")
+#     return roots, thresh(np.asarray(roots))
 
 def MakePeakList(ppFile, startIndex = 0, printOutput = False, massType = "normal"):
     
@@ -130,10 +130,11 @@ def FindAllSubHalos(ppInputsFile, printOutput = False,redshift_indicies = 'all')
     
     # if no redshifts chosen, use all of them
     if redshift_indicies=='all':
+        p = ParamsFile(ppInputsFile)
         # Find latest redshift with peaks in it
-        sizes = np.zeros(len(peak_list))
-        for i in range(len(peak_list)):
-            sizes[i] = peak_list[i].size
+        sizes = np.zeros(len(All_Peaks))
+        for i in range(len(All_Peaks)):
+            sizes[i] = All_Peaks[i].size
         redshift_indicies = np.arange(len(p["redshifts"]))[sizes>0]
     
     trees = [cKDTree(All_Peaks[i][0:3].T, boxsize = boxsize) for i in redshift_indicies]
@@ -512,17 +513,18 @@ def plotMergerTree(merger_list, ppFile, startIndex=0, printOutput = False,
     # Colour on mass
     colormap = cm = plt.get_cmap(cmap) 
     if max_mass == None:
-        max_mass = merger_list[0][0,4]
+        max_mass = 1.1*merger_list[0][0,4]
+        print("Max mass: {:.3} Msol".format(max_mass))
         
     if max_radius == None:
-        max_radius = merger_list[0][0,3]
+        max_radius = 1.1*merger_list[0][0,3]
 
     #cNorm  = colors.Normalize(np.log10(max(1e-15, min_mass)), np.log10(max_mass))
     #scalarMap = cmx.ScalarMappable(norm=cNorm, cmap=colormap)
     
-    cNorm  = colors.LogNorm(max(1e-15, min_mass), merger_list[0][0,4])
+    cNorm  = colors.LogNorm(max(1e-17, min_mass), merger_list[0][0,4])
     scalarMap = cmx.ScalarMappable(norm=cNorm, cmap=colormap)
-    
+    print("Norm: ", scalarMap.get_array())
     if figure == None:
         fig = plt.figure(figsize = (7, 5))
     else:
@@ -552,7 +554,8 @@ def plotMergerTree(merger_list, ppFile, startIndex=0, printOutput = False,
                 
             # Plot the halo
             ms = 30*merger_list[i][j,3]/max_radius
-            colorVal = scalarMap.to_rgba(merger_list[i][j,4])   
+            print("Current mass: {:.3}Msol".format(merger_list[i][j,4]))
+            colorVal = scalarMap.to_rgba(np.log10(merger_list[i][j,4]))
             ax1.plot(redshifts[i], haloOrdering(merger_list[i][j,:], merger_list[i]),
                      'o', ms = ms, color = colorVal)    
     
@@ -688,7 +691,7 @@ def plotMergerTree2(merger_list, ppFile, startIndex=0, printOutput = False,
             
     return ax1
 
-def plotMergerPatches(merger_list, pp_file, printOutput = False, cmap = 'gnuplot'):
+def plotMergerPatches(merger_list, ppFile, printOutput = False, cmap = 'gnuplot'):
     
     last_index = 0
     for i in range(len(merger_list)-1):

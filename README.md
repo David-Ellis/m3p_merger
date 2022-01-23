@@ -49,6 +49,8 @@ We see that, as expected, the number of halos begins very small then rises as li
 # Calculate number of peaks at each redshift
 numHalos = [len(peak_list[i][0]) for i in range(len(peak_list))]
 
+fig = plt.figure()
+fig.patch.set_facecolor('white')
 plt.semilogx(redshifts, numHalos, lw = 2)
 plt.xlim([max(redshifts), min(redshifts)])
 plt.xlabel("Redshift")
@@ -76,6 +78,9 @@ We could similarly choose to look at the total mass of collapsed objects in our 
 
 ```python
 totalMass = [sum(peak_list[i][4,:]) for i in range(len(peak_list))]
+
+fig = plt.figure()
+fig.patch.set_facecolor('white')
 plt.semilogx(redshifts, totalMass, lw = 2)
 plt.xlim([max(redshifts), min(redshifts)])
 plt.xlabel("Redshift")
@@ -101,7 +106,7 @@ We construct merger trees from the peak list using `BuildMergerTree()`.
 
 This function defaults to calculating merger trees for all halos at the last snapshot. However, we can choose to produce one or more of a subset of merger trees by defining `final_halos_indicies` as shown below. 
 
-`BuildMergerTree()` includes all regions overlapping with the final sphere. This, as shown later, makes the progenitor mass calculation much less "noisy" and therefore helps to improve the quality of the collapse redshift calculation. `BuildMergerTree_OLD()` instead takes the (slightly cruder) approach of including progenitor peaks *completely* if their centres are within the final sphere. 
+`BuildMergerTree()` included the all regions overlapping with the final sphere. This, as shown later, makes the progenitor mass calculation much less "noisy" and therefore helps to improve the quality of the collapse redshift calculation. `BuildMergerTree_OLD()` instead takes the (slightly cruder) approach of inlcuding progenitor peaks *completely* if their centers are within the final sphere. 
 
 
 ```python
@@ -113,7 +118,8 @@ out = m3p_merger.BuildMergerTree(peak_list, ppFile, m3p_data_path, final_halos_i
 
 ```python
 skip = 3
-m3p_merger.plotMergerPatches(out[0][::skip], ppFile, m3p_data_path, cmap = "viridis")
+fig = m3p_merger.plotMergerPatches(out[0][::skip], ppFile, m3p_data_path, cmap = "viridis")
+fig.patch.set_facecolor('white')
 ```
 
 
@@ -132,6 +138,7 @@ There are many optional input variables to change the appearance of the merger t
 skip = 2
 fig = m3p_merger.plotMergerTree(out[0][::skip], ppFile, m3p_data_path, font_size = 16, log = True,
                               colorbar=True, colorbar_title = "Mass [$M_{\odot}$]", cmap = "plasma_r")
+fig.patch.set_facecolor('white')
 plt.show()
 ```
 
@@ -163,6 +170,8 @@ f = 0.01
 peak_list_main, boxsize = m3p_merger.MakePeakList(ppFile, m3p_data_path, startIndex = 0, massType = "unstripped")
 
 labels = ["method 1", "method 2"]
+plt.figure()
+fig.patch.set_facecolor('white')
 for i, func in enumerate([m3p_merger.BuildMergerTree_OLD, m3p_merger.BuildMergerTree]):
     out = func(peak_list_main, ppFile, m3p_data_path, final_halos_indicies = halo_index)
     zCol, ProgMass, z = m3p_merger.FindCollapseRedshift(out[0], f, ppFile, m3p_data_path, startIndex = 0, interp = "None")
@@ -170,12 +179,11 @@ for i, func in enumerate([m3p_merger.BuildMergerTree_OLD, m3p_merger.BuildMerger
     
     print("{}: z_col={:.3}".format(labels[i], zCol))
 
-plt.legend(loc=2)
-plt.xlim(max(z), min(z))
-plt.ylabel("Prog Mass [$M_{\odot}$]")
-plt.xlabel("Redshift, $z$")
-plt.xlim(1e4, 190)
-#np.save("./FinalGraphs/Data/MassGrowth.npy", [z, ProgMass, zCol])
+plt.legend(loc=2);
+plt.xlim(max(z), min(z));
+plt.ylabel("Prog Mass [$M_{\odot}$]");
+plt.xlabel("Redshift, $z$");
+plt.xlim(1e4, 190);
 ```
 
     Done.
@@ -184,15 +192,8 @@ plt.xlim(1e4, 190)
     
 
 
-
-
-    (10000.0, 190)
-
-
-
-
     
-![png](example_plots/output_17_2.png)
+![png](example_plots/output_17_1.png)
     
 
 

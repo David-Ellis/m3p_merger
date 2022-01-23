@@ -513,7 +513,7 @@ def plotMergerTree(merger_list, ppFile, path_prefix, startIndex=0, printOutput =
             assert type(colorbar_title) == str, "Error: colorbar_title must be a string"
             cbar.ax.set_ylabel(colorbar_title)
             
-    return ax1
+    return fig
 
 def plotMergerPatches(merger_list, ppFile, path_prefix, printOutput = False, cmap = 'gnuplot'):
     

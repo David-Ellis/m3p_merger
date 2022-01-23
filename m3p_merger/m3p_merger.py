@@ -10,10 +10,7 @@ import matplotlib.cm as cmx
 matplotlib.rcParams['mathtext.fontset'] = 'stix'
 matplotlib.rcParams['font.family'] = 'STIXGeneral'
 
-import sys
-
-sys.path.insert(0,r'D:\My Drive\Axion PhD\PeakPatch\m3p_merger')
-from utils import ParamsFile, HaloReader
+from m3p_merger.utils import ParamsFile, HaloReader
 
 def MakePeakList(ppFile, path_prefix, startIndex = 0, printOutput = False, massType = "normal"):
     

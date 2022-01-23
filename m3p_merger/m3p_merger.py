@@ -24,7 +24,7 @@ from utils import ParamsFile, HaloReader
 #rhoc = 2.78e-07*(1e6)**3 #Msol/cMpc^3
 #rho_bg = 0.267*rhoc #DM mean density Msol/cMpc^3
 
-path_prefix = r"C:\Users\David\AxionData/PeakPatch/m3p_merger/"
+#path_prefix = r"C:\Users\David\AxionData/PeakPatch/m3p_merger/"
               
 # def Find_z_col(z, delta_0):
 #     #TODO:  Modify this to take redshift of the initial conditions
@@ -85,12 +85,12 @@ path_prefix = r"C:\Users\David\AxionData/PeakPatch/m3p_merger/"
 #             print("ERROR: Delta less than zero!")
 #     return roots, thresh(np.asarray(roots))
 
-def MakePeakList(ppFile, startIndex = 0, printOutput = False, massType = "normal"):
+def MakePeakList(ppFile, path_prefix, startIndex = 0, printOutput = False, massType = "normal"):
     
     assert massType in ["normal", "unstripped"], "MakePeakList(): invalid massType."
     
     # Makes a list of peaks to be used by the sub peak finder
-    ppFile_path = path_prefix + "inputs/" + ppFile
+    ppFile_path = path_prefix + "/inputs/" + ppFile
     
     #print(ppFile_path)
     p = ParamsFile(ppFile_path)
@@ -99,11 +99,11 @@ def MakePeakList(ppFile, startIndex = 0, printOutput = False, massType = "normal
     #path = '/'.join(ppFile.split('/')[:-1])
     
     prefix =  p["output_prefix"]
-    outdir = path_prefix + p["output_dir"]
+    outdir = path_prefix +"/"+ p["output_dir"]
     redshifts = p["redshifts"][startIndex:]
     boxsize = p["boxsize"]    
 
-    firstFile = path_prefix + prefix+"final_halos_0.hdf5"
+    #firstFile = path_prefix + prefix+"final_halos_0.hdf5"
     All_Peaks = np.zeros(len(redshifts), dtype = object)
 
     # Make an array of all the peaks at every redshift
@@ -163,7 +163,7 @@ def FindAllSubHalos(ppInputsFile, printOutput = False,redshift_indicies = 'all')
       
     return final_peaks
 
-def BuildMergerTree_OLD(peak_list, pp_file, redshift_indicies='all', final_halos_indicies = 'all', 
+def BuildMergerTree_OLD(peak_list, pp_file, path_prefix, redshift_indicies='all', final_halos_indicies = 'all', 
                     printOutput = False):
     '''
     Builds lists of progenitor peaks for one (or multiple) final peak(s).
@@ -173,7 +173,7 @@ def BuildMergerTree_OLD(peak_list, pp_file, redshift_indicies='all', final_halos
     '''
     # TODO: Add function description
     # TODO: Enable multi-theading
-    ppFile_path = path_prefix + "inputs/" + pp_file
+    ppFile_path = path_prefix +"/inputs/" + pp_file
     
     #print(ppFile_path)
     p = ParamsFile(ppFile_path)
@@ -308,7 +308,7 @@ def intMid(peak1, peak2):
     
     return xc, yc, zc
 
-def BuildMergerTree(peak_list, ppFile, redshift_indicies='all', final_halos_indicies = 'all', 
+def BuildMergerTree(peak_list, ppFile, path_prefix, redshift_indicies='all', final_halos_indicies = 'all', 
                      effectiveCoords = False, printOutput = False):
     '''
     Builds lists of progenitor peaks for one (or multiple) final peak(s).
@@ -319,7 +319,7 @@ def BuildMergerTree(peak_list, ppFile, redshift_indicies='all', final_halos_indi
     # TODO: Add function description
     # TODO: Enable multi-theading
     
-    ppFile_path = path_prefix + "inputs/" + ppFile
+    ppFile_path = path_prefix + "/inputs/" + ppFile
 
     p = ParamsFile(ppFile_path)
     boxsize = p["boxsize"]  
@@ -590,7 +590,7 @@ def haloOrdering(halo, halolist):
 #     return ax1
 
 
-def plotMergerTree(merger_list, ppFile, startIndex=0, printOutput = False, 
+def plotMergerTree(merger_list, ppFile, path_prefix, startIndex=0, printOutput = False, 
                    cmap = 'gnuplot_r', font_size = 15, log = False, colorbar = False, 
                    colorbar_title = None, min_mass = 0, max_mass = None, max_radius=None,
                    figure = None, subplot = None):
@@ -606,7 +606,7 @@ def plotMergerTree(merger_list, ppFile, startIndex=0, printOutput = False,
         if merger_list[i].size > 0:
             last_index += 1
     
-    ppFile_path = path_prefix + "inputs/" + ppFile
+    ppFile_path = path_prefix + "/inputs/" + ppFile
     
     #print(ppFile_path)
     p = ParamsFile(ppFile_path)
@@ -698,14 +698,14 @@ def plotMergerTree(merger_list, ppFile, startIndex=0, printOutput = False,
             
     return ax1
 
-def plotMergerPatches(merger_list, ppFile, printOutput = False, cmap = 'gnuplot'):
+def plotMergerPatches(merger_list, ppFile, path_prefix, printOutput = False, cmap = 'gnuplot'):
     
     last_index = 0
     for i in range(len(merger_list)-1):
         if merger_list[i].size > 0:
             last_index += 1
    
-    ppFile_path = path_prefix + "inputs/" + ppFile
+    ppFile_path = path_prefix + "/inputs/" + ppFile
     
     #print(ppFile_path)
     p = ParamsFile(ppFile_path)
@@ -748,14 +748,14 @@ def plotMergerPatches(merger_list, ppFile, printOutput = False, cmap = 'gnuplot'
             # No peak here
             pass
         
-def FindCollapseRedshift(merger_tree, thresh_frac, pp_file, 
+def FindCollapseRedshift(merger_tree, thresh_frac, pp_file, path_prefix,
                          startIndex = 0, printOutput = False, interp = "None"):
     last_index = 0
 #     for i in range(len(merger_tree)):
 #         if merger_tree[i].size > 0:
 #             last_index += 1
     
-    ppFile_path = path_prefix + "inputs/" + pp_file
+    ppFile_path = path_prefix + "/inputs/" + pp_file
     #print(ppFile_path)
     p = ParamsFile(ppFile_path)
     redshifts = p["redshifts"][-len(merger_tree):]
@@ -779,8 +779,8 @@ def FindCollapseRedshift(merger_tree, thresh_frac, pp_file,
                      
     return CollapseRedshift, ProgMass, redshifts
 
-def getStartIndex(ppFile, z0):
-    p = ParamsFile(path_prefix + "inputs/" + ppFile)
+def getStartIndex(ppFile, path_prefix, z0):
+    p = ParamsFile(path_prefix + "/inputs/" + ppFile)
     redshifts = p["redshifts"] 
     nearest_z = redshifts[abs(redshifts-z0)==min(abs(redshifts-z0))][0]
     start_index = len(redshifts[redshifts<nearest_z])

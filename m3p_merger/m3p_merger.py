@@ -564,6 +564,7 @@ def plotMergerPatches(merger_list, ppFile, path_prefix, printOutput = False, cma
         else:
             # No peak here
             pass
+    return fig
         
 def FindCollapseRedshift(merger_tree, thresh_frac, pp_file, path_prefix,
                          startIndex = 0, printOutput = False, interp = "None"):

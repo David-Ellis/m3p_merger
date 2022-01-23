@@ -1,8 +1,6 @@
 import numpy as np
 import matplotlib.pyplot as plt
-#import h5py
-#from scipy.ndimage import gaussian_filter
-#from scipy.optimize import root_scalar
+
 from scipy.spatial import cKDTree
 import matplotlib.patches as mpatches
 import matplotlib
@@ -16,74 +14,6 @@ import sys
 
 sys.path.insert(0,r'D:\My Drive\Axion PhD\PeakPatch\m3p_merger')
 from utils import ParamsFile, HaloReader
-
-
-# Cosmological parameters
-#z_eq = 3402
-#a_eq = 1/(z_eq+1)
-#rhoc = 2.78e-07*(1e6)**3 #Msol/cMpc^3
-#rho_bg = 0.267*rhoc #DM mean density Msol/cMpc^3
-
-#path_prefix = r"C:\Users\David\AxionData/PeakPatch/m3p_merger/"
-              
-# def Find_z_col(z, delta_0):
-#     #TODO:  Modify this to take redshift of the initial conditions
-#     return delta_0/GrowthFactor(9e5)*(GrowthFactor(z)-1)-1.686
-
-# def thresh(z):
-#     return 1.686*GrowthFactor(z)/(GrowthFactor(z)-1)
-
-# def GrowthFactor(z):
-#     a = 1/(z+1)
-#     x = a/a_eq
-#     return 1+2/3*x
-
-# def FindDeltaSpectrum(Peaks, DensityFile, ppFile):
-#     # Get boxsize from pp file
-#     ppFile_path = path_prefix + "inputs/" + ppFile
-#     #print(ppFile_path)
-#     p = ParamsFile(ppFile_path)
-#     boxsize = p["boxsize"]  
-    
-#     # Load unevolved density field   
-#     with h5py.File(DensityFile, 'r') as d:
-#         density = d['energy/redensity'][:]
-        
-#     density = density.reshape(512,512,512)
-
-#     # Smooth on ~ 2 pixal scale - Gaussian smoothing probably not best approach
-#     overdensities = (density-density.mean())/density.mean()
-#     overdensities =  gaussian_filter(overdensities, 2)
-
-#     density = []
-#     all_r = []
-#     roots = []
-#     # Find delta value in *linearly* evolved density field
-    
-#     num_peaks = len(Peaks[0,:])
-#     #print(num_peaks)
-#     delta_unEv = np.zeros(num_peaks)
-#     for i in range(num_peaks):
-#         x_cell = int(512*Peaks[0][i]/boxsize)    
-#         y_cell = int(512*Peaks[1][i]/boxsize) 
-#         z_cell = int(512*Peaks[2][i]/boxsize) 
-#         delta_unEv[i] = overdensities[x_cell, y_cell, z_cell]
-     
-#     plt.hist(delta_unEv,bins=30,log=True)
-#     print(len(delta_unEv[delta_unEv<0])/len(delta_unEv)*100,"% less than zero")
-#     plt.show()
-
-#     for d in delta_unEv:
-#         unconverged = 0
-#         if d > 0:
-#             sol = root_scalar(Find_z_col, args = d, bracket = (1, 9e5))
-#             if sol.converged == True:
-#                 roots += [sol.root]
-#             else:
-#                 unconverged += 1
-#         else:
-#             print("ERROR: Delta less than zero!")
-#     return roots, thresh(np.asarray(roots))
 
 def MakePeakList(ppFile, path_prefix, startIndex = 0, printOutput = False, massType = "normal"):
     
@@ -126,7 +56,6 @@ def MakePeakList(ppFile, path_prefix, startIndex = 0, printOutput = False, massT
 
 def FindAllSubHalos(ppInputsFile, printOutput = False,redshift_indicies = 'all'):
     All_Peaks, boxsize = MakePeakList(ppInputsFile, printOutput = printOutput)
-    num_redshifts = len(All_Peaks)
     
     # if no redshifts chosen, use all of them
     if redshift_indicies=='all':
@@ -385,9 +314,6 @@ def BuildMergerTree(peak_list, ppFile, path_prefix, redshift_indicies='all', fin
                     #print("len(peak_list):", len(peak_list[redshift_index+1][0, :][query[1]]), "len(query[1]):", len(query[1]))
                     subPeakRadii = peak_list[redshift_index+1][3, :][query[1][:maxIndex]].copy()
                 
-                #print("initial query[1]:", query[1], ". Total num:", len(query[1]))
-                #print("initial dists:", dists)
-                #print("initial radii:", subPeakRadii)
                 for i, index in enumerate(query[1][:maxIndex][dists < final_radius + subPeakRadii]):
                     # Check if any overlap
                     subPeakRadius = peak_list[redshift_index+1][3, index]
@@ -484,112 +410,6 @@ def haloOrdering(halo, halolist):
     return norm_posn
 
 
-
-# def plotMergerTree(merger_list, ppFile, startIndex=0, printOutput = False, 
-#                    cmap = 'gnuplot_r', font_size = 15, log = False, colorbar = False, 
-#                    colorbar_title = None, min_mass = 0, max_mass = None, max_radius=None,
-#                    figure = None, subplot = None):
-#     ### OLD VERSION ###
-#
-#     # TODO: Add function description
-#     # TODO: Sort heights of peaks based on y-axis posn or something.
-            
-#     # Filter out low mass halos
-#     merger_list = pruneLowMasses(merger_list, min_mass, printOutput)
-    
-#     # only plot for redshifts with peaks in them
-#     last_index = 0
-#     for i in range(len(merger_list)-1):
-#         if merger_list[i].size > 0:
-#             last_index += 1
-    
-#     ppFile_path = path_prefix + "inputs/" + ppFile
-    
-#     #print(ppFile_path)
-#     p = ParamsFile(ppFile_path)
-#     redshifts = p["redshifts"][startIndex:]
-#     boxsize = p["boxsize"]
-   
-#     # Move peaks to account for periodic boundary conditions
-#     merger_list = MoveOutOfBounds(merger_list, boxsize, printOutput)
-    
-#     # plotting info
-#     matplotlib.rc('font', size=font_size)
-#     #print(merger_list[-1][:,4]
-#     # Colour on mass
-#     colormap = plt.get_cmap(cmap) 
-#     if max_mass == None:
-#         max_mass = 1.1*merger_list[0][0,4]
-#         print("Max mass: {:.3} Msol".format(max_mass))
-        
-#     if max_radius == None:
-#         max_radius = 1.1*merger_list[0][0,3]
-
-#     #cNorm  = colors.Normalize(np.log10(max(1e-15, min_mass)), np.log10(max_mass))
-#     #scalarMap = cmx.ScalarMappable(norm=cNorm, cmap=colormap)
-    
-#     cNorm  = colors.LogNorm(max(1e-16, min_mass), merger_list[0][0,4])
-#     scalarMap = cmx.ScalarMappable(norm=cNorm, cmap=colormap)
-#     print("Norm: ", scalarMap.get_array())
-#     if figure == None:
-#         fig = plt.figure(figsize = (7, 5))
-#     else:
-#         fig = figure
-        
-#     if subplot == None:
-#         ax1 = fig.add_subplot(111)
-#     else:
-#         ax1 = fig.add_subplot(subplot)
-#     for i in range(last_index-1, 0, -1):
-#         if printOutput == True:
-#             print("redshift index: {}".format(i))
-            
-#         # Check each peak for peaks at the earlier redshift
-#         for j in range(merger_list[i].shape[0]):
-#             if i<len(merger_list)-1 and merger_list[i-1].size>0:
-#                 # Calculate distance between current halo and all others at next redshift
-#                 dists = np.sqrt(np.sum((merger_list[i][j,0:3]-merger_list[i-1][:,0:3])**2,axis=1)) -merger_list[i-1][:,3]
-#                 index = np.where(dists == min(dists))[0][0]
-                
-#                 assert type(index)==np.int64, "No parent halo found"
-                    
-#                 # Plot merger line
-#                 y_posn = [haloOrdering(merger_list[i][j,:], merger_list[i]), 
-#                           haloOrdering(merger_list[i-1][index,:], merger_list[i-1])]
-#                 ax1.plot([redshifts[i],redshifts[i-1]], y_posn, '--', color = "gray")
-                
-#             # Plot the halo
-#             ms = 30*merger_list[i][j,3]/max_radius
-#             print("Current mass: {:.3}Msol".format(merger_list[i][j,4]))
-#             colorVal = scalarMap.to_rgba(np.log10(merger_list[i][j,4]))
-#             ax1.plot(redshifts[i], haloOrdering(merger_list[i][j,:], merger_list[i]),
-#                      'o', ms = ms, color = colorVal)    
-    
-#     # Plot final halo
-#     ms = 30*merger_list[0][0,3]/max_radius
-#     colorVal = scalarMap.to_rgba(merger_list[0][0,4])     
-#     ax1.plot(redshifts[0], -0.5, 'o', ms = ms, color = colorVal)    
-    
-#     if log == True:
-#         plt.xscale('log')
-#     ax1.set_yticks([])     
-#     ax1.set_xlim(redshifts[last_index], redshifts[0]*0.8)
-#     ax1.set_xlabel("Redshift, $z$")
-    
-#     print("earliest redshift = {}".format(redshifts[last_index]))
-#     #ax1.set_xticks([])
-    
-#     if colorbar == True:
-#         #scalarMap.set_array([])
-#         print(scalarMap)
-#         cbar = fig.colorbar(scalarMap)
-#         if colorbar_title != None:
-#             assert type(colorbar_title) == str, "Error: colorbar_title must be a string"
-#             cbar.ax.set_ylabel(colorbar_title)
-            
-#     return ax1
-
-
 def plotMergerTree(merger_list, ppFile, path_prefix, startIndex=0, printOutput = False, 
                    cmap = 'gnuplot_r', font_size = 15, log = False, colorbar = False, 
                    colorbar_title = None, min_mass = 0, max_mass = None, max_radius=None,
@@ -620,7 +440,7 @@ def plotMergerTree(merger_list, ppFile, path_prefix, startIndex=0, printOutput =
     matplotlib.rc('font', size=font_size)
     #print(merger_list[-1][:,4]
     # Colour on mass
-    colormap = cm = plt.get_cmap(cmap) 
+    colormap = plt.get_cmap(cmap) 
     if max_mass == None:
         max_mass = merger_list[0][0,4]
         
@@ -717,7 +537,7 @@ def plotMergerPatches(merger_list, ppFile, path_prefix, printOutput = False, cma
     
     import matplotlib.colors as colors
     fig = plt.figure(figsize = (11,5))
-    colormap = cm = plt.get_cmap(cmap) 
+    colormap = plt.get_cmap(cmap) 
     cNorm  = colors.Normalize(redshifts[0], redshifts[last_index])
     scalarMap = cmx.ScalarMappable(norm=cNorm, cmap=colormap)
     
@@ -750,10 +570,6 @@ def plotMergerPatches(merger_list, ppFile, path_prefix, printOutput = False, cma
         
 def FindCollapseRedshift(merger_tree, thresh_frac, pp_file, path_prefix,
                          startIndex = 0, printOutput = False, interp = "None"):
-    last_index = 0
-#     for i in range(len(merger_tree)):
-#         if merger_tree[i].size > 0:
-#             last_index += 1
     
     ppFile_path = path_prefix + "/inputs/" + pp_file
     #print(ppFile_path)

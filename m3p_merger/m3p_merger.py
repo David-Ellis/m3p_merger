@@ -13,10 +13,10 @@ matplotlib.rcParams['font.family'] = 'STIXGeneral'
 from m3p_merger.utils import ParamsFile, HaloReader
 
 def MakePeakList(ppFile, path_prefix, startIndex = 0, printOutput = False, massType = "normal"):
+    '''Makes a list of peaks to be used by the sub peak finder'''
     
     assert massType in ["normal", "unstripped"], "MakePeakList(): invalid massType."
     
-    # Makes a list of peaks to be used by the sub peak finder
     ppFile_path = path_prefix + "/inputs/" + ppFile
     
     #print(ppFile_path)
@@ -49,45 +49,6 @@ def MakePeakList(ppFile, path_prefix, startIndex = 0, printOutput = False, massT
         print()    
     
     return All_Peaks, boxsize
-
-
-def FindAllSubHalos(ppInputsFile, printOutput = False,redshift_indicies = 'all'):
-    All_Peaks, boxsize = MakePeakList(ppInputsFile, printOutput = printOutput)
-    
-    # if no redshifts chosen, use all of them
-    if redshift_indicies=='all':
-        p = ParamsFile(ppInputsFile)
-        # Find latest redshift with peaks in it
-        sizes = np.zeros(len(All_Peaks))
-        for i in range(len(All_Peaks)):
-            sizes[i] = All_Peaks[i].size
-        redshift_indicies = np.arange(len(p["redshifts"]))[sizes>0]
-    
-    trees = [cKDTree(All_Peaks[i][0:3].T, boxsize = boxsize) for i in redshift_indicies]
-    
-    final_peaks = All_Peaks[-1]
-
-    for redshift_index in redshift_indicies[:-1]:
-        
-        # Find nearest neighbor for every peak at this redshift
-        query = trees[redshift_index+1].query(All_Peaks[redshift_index][0:3, :].T, k=1, eps=0)
-        dists = query[0]
-        # take radii of every peak at this redshift
-        radii = All_Peaks[redshift_index][3,:]
-        
-        # If at the previous redshift, there are no peaks within the radius of the peak at this redshift,
-        # then this is the first instance of that peak.
-        NewPeaks = All_Peaks[redshift_index].T[dists>radii].T
-        
-        if printOutput == True:
-            print("zi = {}: {} new peaks.".format(redshift_index,len(NewPeaks[0,:])))
-            
-        # Add theses peaks to the store
-        final_peaks = np.concatenate((final_peaks,NewPeaks),axis=1)
-    if printOutput == True:
-        print(final_peaks.shape, All_Peaks[-1].shape)
-      
-    return final_peaks
 
 def BuildMergerTree_OLD(peak_list, pp_file, path_prefix, redshift_indicies='all', final_halos_indicies = 'all', 
                     printOutput = False):

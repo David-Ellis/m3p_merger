@@ -231,7 +231,7 @@ class ParamsFile(OrderedDict):
             for line in lines:
                 line=line.rstrip()
                 line=line.lstrip()
-                if(len(line)<1 or line[0] is '#'):
+                if(len(line)<1 or line[0] == '#'):
                     continue
                 line=line.split('=')
                 if(len(line)>1):

@@ -1,26 +1,30 @@
-import sys, os, m3p_merger
+import os
+from m3p_merger import m3p_merger
 import numpy as np
 
-args = sys.argv
-
-assert len(args) == 3, "2 input arguments required: <pp file name> <save keyword>"
-
-ppFile = args[1]
-saveName = args[2]
-
+# Define threshold progenitor mass fraction
 frac = 0.01   
+
+# Define m3p file locations
+m3p_data_path = r"C:\Users\david\AxionData\PeakPatch\m3p_merger"
+ppFile = "inputs.ax_jan5_stitched"
+saveName = "jan5_merger"
+####################################################################################################
+
 print("-"*80)
 print("Calculating collapse redshifts\n   ppFile: {}\n   Save name = {}\n".format(ppFile, saveName))
     
 # Check if output directory exists, if not, make one
-if not os.path.isdir("ConcEvolution"):
+outfile = "mergerEvolution"
+
+if not os.path.isdir(outfile):
     print("Output directory \\ConcEvolution does not exit. Make it now.")
-    os.makedirs("ConcEvolution")
+    os.makedirs(outfile)
     
 # Generate save names
-collapse_save_name = "ConcEvolution/{}_CollapseRedshifts.npy".format(saveName)
-masses_save_name = "ConcEvolution/{}_FinalMasses.npy".format(saveName)
-radii_save_name = "ConcEvolution/{}_FinalRadii.npy".format(saveName)
+collapse_save_name = outfile + "/{}_CollapseRedshifts.npy".format(saveName)
+masses_save_name   = outfile + "/{}_FinalMasses.npy".format(saveName)
+radii_save_name    = outfile + "/{}_FinalRadii.npy".format(saveName)
 
 # Check that files with these save names don't already exist
 abort = False
@@ -30,20 +34,19 @@ for name in [collapse_save_name, masses_save_name, radii_save_name]:
         print(error_message)
         abort = True
 assert (not abort), "Save name already exists"
-    
 
 print("Building peak list...")
-peak_list, boxsize = m3p_merger.MakePeakList(ppFile,startIndex = 0, massType = "unstripped", printOutput = True)
+peak_list, boxsize = m3p_merger.MakePeakList(ppFile, m3p_data_path, startIndex = 0, massType = "unstripped", printOutput = True)
 print("Done.\n")
 
 print("Building merger trees...")
-out = m3p_merger.BuildMergerTree2(peak_list, ppFile, final_halos_indicies = "all", printOutput = True)
+out = m3p_merger.BuildMergerTree(peak_list, ppFile, m3p_data_path,  final_halos_indicies = "all", printOutput = True)
 print("Done.\n")
 
 print("Calculating collapse redshifts...")
 collapse_redshifts = np.zeros(len(out))
 for i in range(len(out)):
-    collapse_redshifts[i] = m3p_merger.FindCollapseRedshift(out[i], frac, ppFile, interp = "None")[0]
+    collapse_redshifts[i] = m3p_merger.FindCollapseRedshift(out[i], frac, ppFile, m3p_data_path, interp = "None")[0]
 print("Done.\n")
 
 print("Fetching final halo masses...")
